@@ -1,0 +1,188 @@
+{
+  "vehicles": [
+    {
+      "vehicle_id": "VH001",
+      "car_type": "sedan_petrol",
+      "available_sensor_fields": {
+        "engine_temp_c": 92.5,
+        "rpm": 1100,
+        "battery_voltage": 12.4,
+        "oil_pressure_kpa": 260,
+        "coolant_temp_c": 89.3,
+        "fuel_level_percent": 56.0,
+        "speed_kmph": 0,
+        "gps_lat": 28.6139,
+        "gps_lon": 77.2090,
+        "dtc_codes": ["P0420"],
+        "ambient_temp_c": 31.2,
+        "tire_pressure_fl": 32.1,
+        "tire_pressure_fr": 32.4,
+        "tire_pressure_rl": 34.0,
+        "tire_pressure_rr": 33.7,
+        "brake_fluid_level_percent": 78.0
+      }
+    },
+
+    {
+      "vehicle_id": "VH002",
+      "car_type": "electric_suv",
+      "available_sensor_fields": {
+        "battery_voltage": 398,
+        "battery_soc": 78,
+        "motor_temp_c": 65,
+        "inverter_temp_c": 72,
+        "rpm": 0,
+        "speed_kmph": 0,
+        "gps_lat": 37.7749,
+        "gps_lon": -122.4194,
+        "charger_state": "disconnected",
+        "ambient_temp_c": 22.0,
+        "tire_pressure_fl": 34,
+        "tire_pressure_fr": 33,
+        "tire_pressure_rl": 35,
+        "tire_pressure_rr": 34
+      }
+    },
+
+    {
+      "vehicle_id": "VH003",
+      "car_type": "diesel_truck",
+      "available_sensor_fields": {
+        "engine_temp_c": 98.0,
+        "rpm": 1500,
+        "battery_voltage": 12.0,
+        "oil_pressure_kpa": 310,
+        "coolant_temp_c": 95.0,
+        "fuel_level_percent": 72.3,
+        "speed_kmph": 45,
+        "dtc_codes": [],
+        "gps_lat": 40.7128,
+        "gps_lon": -74.0060,
+        "ambient_temp_c": 12.5,
+        "load_weight_kg": 12000
+      }
+    },
+
+    {
+      "vehicle_id": "VH004",
+      "car_type": "sports_car",
+      "available_sensor_fields": {
+        "engine_temp_c": 105,
+        "rpm": 3200,
+        "battery_voltage": 12.7,
+        "oil_pressure_kpa": 280,
+        "coolant_temp_c": 100,
+        "speed_kmph": 110,
+        "gps_lat": 51.5074,
+        "gps_lon": -0.1278,
+        "ambient_temp_c": 18.9,
+        "fuel_level_percent": 41.0,
+        "brake_temp_fl_c": 190,
+        "brake_temp_fr_c": 185
+      }
+    },
+
+    {
+      "vehicle_id": "VH005",
+      "car_type": "hybrid_sedan",
+      "available_sensor_fields": {
+        "engine_temp_c": 88,
+        "rpm": 900,
+        "battery_voltage": 310,
+        "battery_soc": 65,
+        "coolant_temp_c": 85,
+        "speed_kmph": 20,
+        "fuel_level_percent": 36,
+        "motor_temp_c": 48,
+        "gps_lat": 34.0522,
+        "gps_lon": -118.2437,
+        "ambient_temp_c": 25.5
+      }
+    },
+
+    {
+      "vehicle_id": "VH006",
+      "car_type": "delivery_van",
+      "available_sensor_fields": {
+        "engine_temp_c": 94,
+        "rpm": 1300,
+        "battery_voltage": 12.2,
+        "coolant_temp_c": 90,
+        "speed_kmph": 50,
+        "fuel_level_percent": 62,
+        "cargo_temp_c": 8,
+        "ambient_temp_c": 14,
+        "gps_lat": 48.8566,
+        "gps_lon": 2.3522,
+        "dtc_codes": ["P0301"]
+      }
+    },
+
+    {
+      "vehicle_id": "VH007",
+      "car_type": "tractor",
+      "available_sensor_fields": {
+        "engine_temp_c": 99,
+        "rpm": 1800,
+        "battery_voltage": 12.1,
+        "oil_pressure_kpa": 270,
+        "hydraulic_pressure_kpa": 1500,
+        "fuel_level_percent": 47,
+        "speed_kmph": 15,
+        "gps_lat": 19.0760,
+        "gps_lon": 72.8777,
+        "ambient_temp_c": 33.5
+      }
+    },
+
+    {
+      "vehicle_id": "VH008",
+      "car_type": "electric_bus",
+      "available_sensor_fields": {
+        "battery_voltage": 520,
+        "battery_soc": 84,
+        "motor_temp_c": 74,
+        "inverter_temp_c": 79,
+        "speed_kmph": 35,
+        "ambient_temp_c": 27,
+        "gps_lat": 41.8781,
+        "gps_lon": -87.6298,
+        "passenger_count": 36,
+        "brake_temp_rear_c": 140
+      }
+    },
+
+    {
+      "vehicle_id": "VH009",
+      "car_type": "scooter_petrol",
+      "available_sensor_fields": {
+        "engine_temp_c": 85,
+        "rpm": 3000,
+        "battery_voltage": 12.5,
+        "fuel_level_percent": 28,
+        "speed_kmph": 30,
+        "gps_lat": 13.0827,
+        "gps_lon": 80.2707,
+        "ambient_temp_c": 30
+      }
+    },
+
+    {
+      "vehicle_id": "VH010",
+      "car_type": "luxury_sedan",
+      "available_sensor_fields": {
+        "engine_temp_c": 93,
+        "coolant_temp_c": 90,
+        "rpm": 1000,
+        "battery_voltage": 12.6,
+        "speed_kmph": 0,
+        "fuel_level_percent": 92,
+        "ambient_temp_c": 21,
+        "cabin_temp_c": 19,
+        "gps_lat": 55.7558,
+        "gps_lon": 37.6173,
+        "dtc_codes": []
+      }
+    }
+  ]
+}
