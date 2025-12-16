@@ -19,7 +19,7 @@ from utils import VehicleDataManager, get_sensor_status, SENSOR_RANGES
 
 
 gemini_model = GeminiModel(
-    model_name="models/gemini-1.5-flash",
+    model_name="models/gemini-2.0-flash",
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
