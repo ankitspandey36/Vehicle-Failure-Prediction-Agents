@@ -40,6 +40,9 @@ class VehicleContext:
     """Context passed to agents"""
     vehicle_id: str
     data_manager: VehicleDataManager
+    processed_packets: Optional[list] = None  # Pre-processed data from startup
+    anomalies: Optional[Dict] = None  # Detected anomalies
+    analysis_info: Optional[str] = None  # Additional analysis metadata
 
 
 # ============================================================================
@@ -427,9 +430,10 @@ If the query is unclear or could apply to multiple agents, choose the most relev
 )
 
 
-async def route_query(query: str, vehicle_id: str, data_manager: VehicleDataManager) -> Dict[str, Any]:
+async def route_query(query: str, vehicle_id: str, data_manager: VehicleDataManager, analysis_context: Dict[str, Any] = None) -> Dict[str, Any]:
     """
     Route user query to appropriate agent and get response.
+    Uses pre-processed buffer if analysis_context is provided.
     """
     # First, use master agent to determine routing
     routing_result = await master_agent.run(query)
@@ -437,6 +441,12 @@ async def route_query(query: str, vehicle_id: str, data_manager: VehicleDataMana
     
     # Create context for the specialized agent
     context = VehicleContext(vehicle_id=vehicle_id, data_manager=data_manager)
+    
+    # Add analysis context if provided
+    if analysis_context:
+        context.processed_packets = analysis_context.get("processed_packets", [])
+        context.anomalies = analysis_context.get("anomalies_detected", {})
+        context.analysis_info = f"Pre-processed {analysis_context.get('total_packets', 0)} packets with {analysis_context.get('total_anomalies', 0)} anomalies detected"
     
     # Route to appropriate agent
     if agent_type == "diagnostic":
@@ -485,11 +495,18 @@ async def route_query(query: str, vehicle_id: str, data_manager: VehicleDataMana
         }
 
 
-async def get_comprehensive_analysis(vehicle_id: str, data_manager: VehicleDataManager) -> Dict[str, Any]:
+async def get_comprehensive_analysis(vehicle_id: str, data_manager: VehicleDataManager, analysis_context: Dict[str, Any] = None) -> Dict[str, Any]:
     """
     Runs all agents in parallel for a full report.
+    Uses pre-processed buffer if analysis_context is provided.
     """
     context = VehicleContext(vehicle_id=vehicle_id, data_manager=data_manager)
+    
+    # Add analysis context if provided
+    if analysis_context:
+        context.processed_packets = analysis_context.get("processed_packets", [])
+        context.anomalies = analysis_context.get("anomalies_detected", {})
+        context.analysis_info = f"Pre-processed {analysis_context.get('total_packets', 0)} packets with {analysis_context.get('total_anomalies', 0)} anomalies detected"
 
     try:
         diagnostic_task = diagnostic_agent.run(

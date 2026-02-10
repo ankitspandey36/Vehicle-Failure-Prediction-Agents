@@ -1,0 +1,77 @@
+{
+    "metadata": {
+        "version": "1.0.0",
+        "description": "Manufacturing specifications and vehicle database",
+        "last_updated": "2026-02-11"
+    },
+    "vehicle_specs": {
+        "default": {
+            "model": "XUV400",
+            "year": 2026,
+            "type": "electric",
+            "battery_capacity_kwh": 60,
+            "motor_power_kw": 200,
+            "transmission": "single_speed"
+        }
+    },
+    "component_thresholds": {
+        "battery": {
+            "max_voltage_v": 400,
+            "min_voltage_v": 200,
+            "max_temperature_c": 60,
+            "max_charge_current_a": 200
+        },
+        "motor": {
+            "max_rpm": 15000,
+            "max_torque_nm": 400,
+            "max_temperature_c": 120
+        },
+        "inverter": {
+            "max_temperature_c": 80,
+            "max_current_a": 300
+        }
+    },
+    "thermal_profiles": {
+        "normal_operation": {
+            "ambient_temp_range": [
+                -10,
+                45
+            ],
+            "acceptable_rise_rate_c_per_min": 1.0
+        },
+        "high_load_operation": {
+            "ambient_temp_range": [
+                0,
+                40
+            ],
+            "acceptable_rise_rate_c_per_min": 2.0
+        }
+    },
+    "diagnostic_codes": {
+        "BATTERY_IMBALANCE": {
+            "code": "B001",
+            "severity": "warning",
+            "description": "Battery cell voltage imbalance detected under load"
+        },
+        "THERMAL_STRESS": {
+            "code": "T001",
+            "severity": "critical",
+            "description": "Thermal stress coupling detected"
+        },
+        "ELECTRICAL_STRESS": {
+            "code": "E001",
+            "severity": "major",
+            "description": "Sustained electrical stress detected"
+        },
+        "SIGNAL_DEGRADATION": {
+            "code": "S001",
+            "severity": "warning",
+            "description": "Signal consistency degradation"
+        },
+        "THERMAL_AGING": {
+            "code": "A001",
+            "severity": "warning",
+            "description": "Component thermal aging detected"
+        }
+    }
+}
