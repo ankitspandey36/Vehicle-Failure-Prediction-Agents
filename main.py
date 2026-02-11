@@ -46,47 +46,19 @@ LOGS_DIR = os.path.join(SCRIPT_DIR, "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 # ============================================================================
-# Logging Functions
+# Anomaly Storage (In-memory, Serverless-safe)
 # ============================================================================
 
-def save_analysis_to_file(anomaly_idx: int, analysis_text: str):
-    """Save full analysis to file"""
-    try:
-        log_file = os.path.join(LOGS_DIR, f"anomaly_{anomaly_idx}_analysis.txt")
-        with open(log_file, "w", encoding="utf-8") as f:
-            f.write(f"ANOMALY ANALYSIS REPORT\n")
-            f.write(f"Anomaly ID: {anomaly_idx}\n")
-            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-            f.write(f"{'='*80}\n\n")
-            f.write(analysis_text)
-        print(f"[LOG] Saved analysis to {log_file}")
-    except Exception as e:
-        print(f"[LOG] Error saving analysis: {e}")
-
-
-def save_anomalies_summary():
-    """Save summary of all detected anomalies"""
-    try:
-        summary_file = os.path.join(LOGS_DIR, "anomalies_summary.txt")
-        with open(summary_file, "w", encoding="utf-8") as f:
-            f.write("ANOMALIES DETECTED SUMMARY\n")
-            f.write(f"Total Anomalies: {len(anomalies_detected)}\n")
-            f.write(f"Generated: {datetime.now().isoformat()}\n")
-            f.write(f"{'='*80}\n\n")
-            
-            for idx, data in sorted(anomalies_detected.items()):
-                f.write(f"\nAnomaly #{len([x for x in anomalies_detected.keys() if x <= idx])}\n")
-                f.write(f"  Packet Index: {idx}\n")
-                f.write(f"  Timestamp: {data.get('timestamp')}\n")
-                if data.get('analysis'):
-                    analysis_data = data['analysis']
-                    f.write(f"  Agent: {analysis_data.get('agent')}\n")
-                    f.write(f"  Response: {analysis_data.get('response', 'N/A')[:200]}...\n")
-                f.write(f"{'-'*80}\n")
-        
-        print(f"[LOG] Saved anomalies summary to {summary_file}")
-    except Exception as e:
-        print(f"[LOG] Error saving summary: {e}")
+def print_anomaly_to_terminal(anomaly_idx: int, analysis: dict):
+    """Print anomaly analysis to terminal for confirmation"""
+    print("\n" + "="*80)
+    print("ANOMALY ANALYSIS REPORT")
+    print(f"Anomaly ID: {anomaly_idx}")
+    print(f"Timestamp: {analysis.get('timestamp')}")
+    print(f"Agent Used: {analysis.get('agent')}")
+    print("="*80)
+    print(f"Analysis:\n{analysis.get('response', 'N/A')}")
+    print("="*80 + "\n")
 
 # ============================================================================
 # Global Data Buffer - Continuous Streaming Mode
@@ -219,13 +191,12 @@ def packet_stream_worker():
                         "analysis": latest_analysis
                     }
                     
-                    # Save full analysis to file
-                    save_analysis_to_file(idx, result.get("response", ""))
+                    # Print to terminal (Serverless-safe, no file I/O)
+                    print_anomaly_to_terminal(idx, latest_analysis)
                     
                     # Print summary
                     response_preview = result.get('response', '')[:150]
-                    print(f">>> Analysis complete: {response_preview}...")
-                    print(f">>> Full analysis saved to logs/anomaly_{idx}_analysis.txt\n")
+                    print(f">>> Analysis complete: {response_preview}...\n")
                     
                 except Exception as e:
                     print(f">>> ERROR during analysis: {e}\n")
@@ -576,35 +547,54 @@ async def get_analysis_report(anomaly_id: int):
         )
 
 
+@app.post("/api/save-anomaly")
+async def save_anomaly(anomaly_data: dict):
+    """Save anomaly analysis to database (for future integration)
+    
+    For now, prints to terminal. Later, this will save to Database.
+    Serverless-safe - no file I/O.
+    
+    Args:
+        anomaly_data: Dictionary containing anomaly details
+    """
+    print("\n" + "="*80)
+    print("[API] ANOMALY SAVE REQUEST")
+    print(f"Timestamp: {datetime.now().isoformat()}")
+    print(f"Data: {anomaly_data}")
+    print("="*80 + "\n")
+    
+    return {
+        "status": "saved",
+        "message": "Anomaly printed to terminal (ready for DB integration)",
+        "timestamp": datetime.now().isoformat(),
+        "data": anomaly_data
+    }
+
+
 @app.get("/anomalies-summary")
 async def get_anomalies_summary():
-    """Get summary of all detected anomalies"""
-    summary_file = os.path.join(LOGS_DIR, "anomalies_summary.txt")
-    
-    # Generate summary if it doesn't exist
-    if not os.path.exists(summary_file) and anomalies_detected:
-        save_anomalies_summary()
-    
-    if not os.path.exists(summary_file):
+    """Get summary of all detected anomalies (In-memory)"""
+    if not anomalies_detected:
         return {
-            "total_anomalies": len(anomalies_detected),
+            "total_anomalies": 0,
             "message": "No anomalies detected yet"
         }
     
-    try:
-        with open(summary_file, "r", encoding="utf-8") as f:
-            content = f.read()
-        
-        return {
-            "total_anomalies": len(anomalies_detected),
-            "summary": content,
-            "generated_at": datetime.now().isoformat()
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error reading summary: {str(e)}"
-        )
+    summary_data = []
+    for idx, data in sorted(anomalies_detected.items()):
+        summary_data.append({
+            "anomaly_number": len(summary_data) + 1,
+            "packet_index": idx,
+            "timestamp": data.get('timestamp'),
+            "agent": data.get('analysis', {}).get('agent'),
+            "response_preview": data.get('analysis', {}).get('response', 'N/A')[:200]
+        })
+    
+    return {
+        "total_anomalies": len(anomalies_detected),
+        "anomalies": summary_data,
+        "generated_at": datetime.now().isoformat()
+    }
 
 
 @app.get("/history/{vehicle_id}")
