@@ -15,6 +15,8 @@ from agents_final import route_query, get_comprehensive_analysis
 from utils import VehicleDataManager, AnalysisLogger
 from fetch import load_packets, convert_decimal, normalize_packet
 from predefined_Rules import ruleGate, load_manufacturing_database
+from mongodb_handler import MongoDBHandler
+from response_parser import structure_analysis_for_db
 
 # Data source: newData.json (rich telemetry)
 # Use absolute path to handle any working directory
@@ -40,6 +42,7 @@ app.add_middleware(
 # Initialize managers
 data_manager = VehicleDataManager(db_path=DATASET_PATH)
 logger = AnalysisLogger()
+mongodb_handler = MongoDBHandler()
 
 # Create logs directory
 LOGS_DIR = os.path.join(SCRIPT_DIR, "logs")
@@ -176,20 +179,37 @@ def packet_stream_worker():
                         )
                     )
                     
+                    # Parse the response text into structured JSON
+                    raw_response = result.get("response", "")
+                    parsed_analysis = structure_analysis_for_db(raw_response)
+                    
                     latest_analysis = {
                         "timestamp": datetime.now().isoformat(),
                         "packet_index": idx,
                         "agent": result.get("agent"),
-                        "response": result.get("response"),
+                        "structured_data": parsed_analysis,
                         "buffer_size": len(rolling_buffer)
                     }
                     
                     # Store anomaly with analysis
-                    anomalies_detected[idx] = {
+                    anomaly_document = {
                         "timestamp": packet.get("vehicle", {}).get("timestamp_utc", "N/A"),
                         "packet_index": idx,
-                        "analysis": latest_analysis
+                        "vehicle_id": "default",
+                        "agent": result.get("agent"),
+                        "analysis": latest_analysis,
+                        "created_at": datetime.utcnow().isoformat()
                     }
+                    
+                    anomalies_detected[idx] = anomaly_document
+
+                    
+                    # Save to MongoDB
+                    if mongodb_handler.is_connected():
+                        mongodb_handler.save_anomaly(anomaly_document)
+                        print(f"[MONGODB] Anomaly saved to database")
+                    else:
+                        print(f"[MONGODB] WARNING: Not connected to MongoDB, using in-memory storage only")
                     
                     # Print to terminal (Serverless-safe, no file I/O)
                     print_anomaly_to_terminal(idx, latest_analysis)
@@ -248,6 +268,30 @@ class ComprehensiveAnalysisRequest(BaseModel):
     vehicle_id: str = Field(..., description="Vehicle identifier (e.g., default for newData)")
 
 
+class AnomalyPostRequest(BaseModel):
+    """Request model for posting anomaly data to MongoDB"""
+    vehicle_id: str = Field(..., description="Vehicle identifier")
+    timestamp: Optional[str] = Field(None, description="Timestamp of the anomaly")
+    packet_index: Optional[int] = Field(None, description="Packet index in the stream")
+    analysis: dict = Field(..., description="Analysis data from agents")
+    description: Optional[str] = Field(None, description="Optional description")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "vehicle_id": "default",
+                "timestamp": "2024-01-15T10:30:45.123Z",
+                "packet_index": 245,
+                "analysis": {
+                    "agent": "diagnostic",
+                    "response": "Engine oil pressure abnormally low",
+                    "severity": "high"
+                },
+                "description": "Critical engine issue detected"
+            }
+        }
+
+
 class VehicleListResponse(BaseModel):
     """Response model for vehicle list"""
     vehicles: list[str]
@@ -265,7 +309,8 @@ async def root():
         "message": "Vehicle Analysis & Maintenance System API",
         "version": "1.0.0",
         "dataset": DATASET_PATH,
-        "mode": "continuous-streaming",
+        "mode": "continuous-streaming with MongoDB",
+        "mongodb": "Enabled - All LLM anomaly data auto-saved",
         "status": data_load_status,
         "message": data_load_message,
         "stream_active": stream_active,
@@ -273,15 +318,16 @@ async def root():
         "anomalies_detected": len(anomalies_detected),
         "latest_analysis": latest_analysis,
         "logs_directory": LOGS_DIR,
-        "note": "Data streams continuously. Anomaly analyses saved to logs/",
+        "note": "Data streams continuously. Anomaly analyses auto-saved to MongoDB.",
         "endpoints": {
-            "POST /query": "Ask about vehicle based on streaming data",
-            "POST /analyze": "Get comprehensive analysis",
+            "GET /status": "System status and MongoDB info",
             "GET /health": "API health check",
+            "GET /analyze": "Get all anomalies from MongoDB (handles empty gracefully)",
+            "POST /analyze": "Save anomaly data to MongoDB",
+            "GET /anomalies": "Get recent anomalies with fallback",
             "GET /buffer-stats": "Get current buffer statistics",
-            "GET /anomalies": "Get all detected anomalies",
-            "GET /analysis/{anomaly_id}": "Get full analysis report for specific anomaly",
-            "GET /anomalies-summary": "Get summary of all anomalies"
+            "POST /query": "Ask about vehicle based on streaming data",
+            "POST /chat": "Get comprehensive analysis"
         }
     }
 
@@ -298,6 +344,56 @@ async def buffer_statistics():
         "anomaly_indices": list(anomalies_detected.keys())[:20],
         "latest_analysis": latest_analysis,
         "note": "Data streams continuously at 1 packet/sec with real-time rule checking"
+    }
+
+
+@app.get("/status")
+async def system_status(limit: int = 50):
+    """
+    Get complete system status including MongoDB, stream, and all anomaly data
+    
+    Shows:
+    - MongoDB connection status
+    - Stream status
+    - Complete anomaly data with all values in JSON
+    - Data flow information
+    
+    Args:
+        limit: Maximum number of anomalies to return (default: 50)
+    """
+    # Get database anomalies with full details
+    anomalies_list = []
+    db_anomaly_count = 0
+    
+    if mongodb_handler.is_connected():
+        anomalies_list = mongodb_handler.get_all_anomalies(limit=limit)
+        db_anomaly_count = mongodb_handler.get_anomalies_count()
+    
+    return {
+        "system": {
+            "stream_active": stream_active,
+            "mongodb_connected": mongodb_handler.is_connected(),
+            "timestamp": datetime.now().isoformat()
+        },
+        "streaming": {
+            "packets_loaded": len(processed_packets),
+            "packets_processed": current_packet_index,
+            "buffer_size": len(rolling_buffer),
+            "data_source": DATASET_PATH
+        },
+        "statistics": {
+            "total_anomalies_detected": len(anomalies_detected),
+            "total_anomalies_in_database": db_anomaly_count,
+            "returned_count": len(anomalies_list),
+            "status": "All LLM data auto-saved to MongoDB" if mongodb_handler.is_connected() else "MongoDB offline - using in-memory storage"
+        },
+        "latest_analysis": latest_analysis,
+        "anomalies": anomalies_list,
+        "api_help": {
+            "GET /status?limit=100": "Get status with more anomalies",
+            "GET /analyze": "Get all anomalies from database",
+            "POST /analyze": "Save new anomaly data"
+        }
     }
 
 
@@ -495,15 +591,162 @@ async def comprehensive_analysis(request: ComprehensiveAnalysisRequest):
         )
 
 
+@app.get("/analyze")
+async def get_all_anomalies(vehicle_id: Optional[str] = None, limit: int = 100):
+    """
+    Get all detected anomalies from MongoDB
+    
+    This endpoint returns anomalies stored in MongoDB database.
+    Useful for frontend to retrieve all anomalies without needing streaming.
+    
+    Args:
+        vehicle_id: Optional filter by vehicle ID
+        limit: Maximum number of anomalies to return (default: 100)
+    
+    Returns:
+        List of all anomalies with their analysis
+    """
+    # Check if MongoDB is connected
+    if not mongodb_handler.is_connected():
+        return {
+            "status": "warning",
+            "total_anomalies": 0,
+            "message": "MongoDB not connected. Using in-memory storage.",
+            "anomalies": []
+        }
+    
+    try:
+        # Fetch anomalies from MongoDB
+        anomalies = mongodb_handler.get_all_anomalies(limit=limit, vehicle_id=vehicle_id)
+        
+        # Get total count
+        total_count = mongodb_handler.get_anomalies_count(vehicle_id=vehicle_id)
+        
+        return {
+            "status": "success",
+            "total_anomalies": total_count,
+            "returned_count": len(anomalies),
+            "vehicle_id": vehicle_id,
+            "anomalies": anomalies,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error fetching anomalies: {str(e)}",
+            "anomalies": []
+        }
+
+
+@app.post("/analyze")
+async def save_anomaly_to_db(request: AnomalyPostRequest):
+    """
+    Save anomaly data directly to MongoDB
+    
+    This endpoint allows posting anomaly data that will be stored in MongoDB.
+    Automatically parses text responses into structured JSON format.
+    
+    Useful for:
+    - Manual anomaly submission
+    - Direct frontend-to-database saving
+    - Legacy system integration
+    
+    Args:
+        request: AnomalyPostRequest containing vehicle_id, analysis, etc.
+    
+    Returns:
+        Success status with saved anomaly ID and structured data
+    """
+    # Check if MongoDB is connected
+    if not mongodb_handler.is_connected():
+        return {
+            "status": "warning",
+            "message": "MongoDB not connected. Saving to in-memory storage only.",
+            "anomaly_id": None
+        }
+    
+    try:
+        # Prepare document for MongoDB
+        anomaly_document = {
+            "vehicle_id": request.vehicle_id,
+            "analysis": request.analysis,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        # Add optional fields if provided
+        if request.timestamp:
+            anomaly_document["timestamp"] = request.timestamp
+        if request.packet_index is not None:
+            anomaly_document["packet_index"] = request.packet_index
+        if request.description:
+            anomaly_document["description"] = request.description
+        
+        # If analysis contains a text response, parse it into structured JSON and replace
+        if isinstance(request.analysis, dict) and "response" in request.analysis:
+            response_text = request.analysis.get("response", "")
+            if isinstance(response_text, str) and response_text.strip():
+                try:
+                    parsed = structure_analysis_for_db(response_text)
+                    # Replace the entire analysis with structured version
+                    anomaly_document["analysis"] = parsed
+                    print(f"[PARSER] Converted response text to structured JSON")
+                except Exception as e:
+                    print(f"[PARSER] Could not parse response: {e}")
+        
+        # Save to MongoDB
+        anomaly_id = mongodb_handler.save_anomaly(anomaly_document)
+        
+        if not anomaly_id:
+            return {
+                "status": "error",
+                "message": "Failed to save anomaly to MongoDB",
+                "anomaly_id": None
+            }
+        
+        return {
+            "status": "success",
+            "message": "Anomaly saved to MongoDB successfully (text parsed to JSON)",
+            "vehicle_id": request.vehicle_id,
+            "anomaly_id": anomaly_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error saving anomaly: {str(e)}",
+            "anomaly_id": None
+        }
+
+
 @app.get("/anomalies")
 async def get_anomalies():
-    """Get all detected anomalies with their analysis"""
+    """Get all detected anomalies with their analysis (from MongoDB if available, else in-memory)"""
     if not stream_active:
         raise HTTPException(
             status_code=503,
             detail="Data stream not active."
         )
+
+    # Try to get from MongoDB first
+    if mongodb_handler.is_connected():
+        try:
+            anomalies = mongodb_handler.get_all_anomalies(limit=50)
+            total_count = mongodb_handler.get_anomalies_count()
+            
+            return {
+                "total_anomalies": total_count,
+                "recent_anomalies": anomalies,
+                "source": "MongoDB",
+                "latest_analysis": latest_analysis,
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            print(f"[API] Error fetching from MongoDB: {e}")
+            # Fall back to in-memory
     
+    # Fall back to in-memory storage
     anomaly_list = []
     for idx, anomaly_data in list(anomalies_detected.items())[:50]:  # Last 50 anomalies
         anomaly_list.append({
@@ -627,6 +870,17 @@ async def startup_event():
     print("\n" + "="*70)
     print("INITIALIZING VEHICLE ANALYSIS SYSTEM - STREAMING MODE")
     print("="*70)
+    
+    # Clear all anomalies from MongoDB on startup
+    if mongodb_handler.is_connected():
+        try:
+            deleted_count = mongodb_handler.clear_all_anomalies()
+            print(f"[MONGODB] Cleared {deleted_count} existing anomalies from database")
+            print("[MONGODB] Fresh start - ready to collect new anomalies")
+        except Exception as e:
+            print(f"[MONGODB] Error clearing anomalies: {e}")
+    else:
+        print("[MONGODB] WARNING: Not connected to MongoDB - skipping clear operation")
     
     # Load packets from file
     if load_data_stream():
