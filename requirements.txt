@@ -1,6 +1,6 @@
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
-pydantic==2.5.0
+pydantic==1.10.15
 pydantic-ai==0.0.14
 griffe==1.5.1
 google-generativeai==0.8.3
