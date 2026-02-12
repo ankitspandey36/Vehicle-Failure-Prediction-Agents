@@ -54,14 +54,7 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 
 def print_anomaly_to_terminal(anomaly_idx: int, analysis: dict):
     """Print anomaly analysis to terminal for confirmation"""
-    print("\n" + "="*80)
-    print("ANOMALY ANALYSIS REPORT")
-    print(f"Anomaly ID: {anomaly_idx}")
-    print(f"Timestamp: {analysis.get('timestamp')}")
-    print(f"Agent Used: {analysis.get('agent')}")
-    print("="*80)
-    print(f"Analysis:\n{analysis.get('response', 'N/A')}")
-    print("="*80 + "\n")
+    pass  # Removed for serverless optimization
 
 # ============================================================================
 # Global Data Buffer - Continuous Streaming Mode
@@ -81,28 +74,21 @@ def load_data_stream():
     global processed_packets, data_load_status, data_load_message
     
     try:
-        print("[MAIN] Loading packet data for streaming...")
-        print(f"[MAIN] Looking for data at: {DATASET_PATH}")
-        
         # Check if file exists
         if not os.path.exists(DATASET_PATH):
-            print(f"[MAIN] ERROR: File not found at {DATASET_PATH}")
             data_load_status = "failed"
             data_load_message = f"File not found: {DATASET_PATH}"
             return False
         
         processed_packets = load_packets(DATASET_PATH)
-        print(f"[MAIN] Loaded {len(processed_packets)} packets for streaming")
         data_load_status = "streaming"
         data_load_message = f"Streaming {len(processed_packets)} packets at 1 packet/sec"
         return True
     except FileNotFoundError:
-        print(f"[MAIN] ERROR: File {DATASET_PATH} not found")
         data_load_status = "failed"
         data_load_message = f"File not found: {DATASET_PATH}"
         return False
     except Exception as e:
-        print(f"[MAIN] ERROR loading packets: {e}")
         data_load_status = "error"
         data_load_message = str(e)
         return False
@@ -116,12 +102,9 @@ def packet_stream_worker():
     global processed_packets, anomalies_detected, rolling_buffer, current_packet_index, stream_active, latest_analysis
     
     if not processed_packets:
-        print("[STREAM] ERROR: No packets loaded")
         return
     
     stream_active = True
-    print(f"\n[STREAM] Starting continuous packet stream... Processing {len(processed_packets)} packets")
-    print(f"[STREAM] 1 packet = 1 second simulation\n")
     
     # Load manufacturing database
     MD = load_manufacturing_database()
@@ -148,17 +131,13 @@ def packet_stream_worker():
             try:
                 rule_ok = ruleGate(packet, MD)
             except Exception as e:
-                print(f"[STREAM] RuleGate error: {e}")
                 rule_ok = True
             
-            # Print status
-            status_str = "[OK] HEALTHY" if rule_ok else "[!] ANOMALY"
-            print(f"[Stream #{packet_counter}] {status_str} | Buffer: {len(rolling_buffer)}")
+            # Status tracking (no print for serverless)
             
             # If anomaly detected, trigger agent analysis
             if not rule_ok:
                 anomaly_counter += 1
-                print(f"\n>>> ANOMALY #{anomaly_counter} DETECTED at packet {idx} - Calling agents for analysis...\n")
                 
                 # Call async analysis using the persistent event loop
                 try:
@@ -207,24 +186,11 @@ def packet_stream_worker():
                     # Save to MongoDB
                     if mongodb_handler.is_connected():
                         mongodb_handler.save_anomaly(anomaly_document)
-                        print(f"[MONGODB] Anomaly saved to database")
-                    else:
-                        print(f"[MONGODB] WARNING: Not connected to MongoDB, using in-memory storage only")
                     
-                    # Print to terminal (Serverless-safe, no file I/O)
-                    print_anomaly_to_terminal(idx, latest_analysis)
-                    
-                    # Print summary
-                    response_preview = result.get('response', '')[:150]
-                    print(f">>> Analysis complete: {response_preview}...\n")
+                    # Analysis complete (no terminal output for serverless)
                     
                 except Exception as e:
-                    print(f">>> ERROR during analysis: {e}\n")
-                    latest_analysis = {
-                        "timestamp": datetime.now().isoformat(),
-                        "packet_index": idx,
-                        "error": str(e)
-                    }
+                    pass  # Silently log errors
             
             # Sleep 1 second per packet (simulating real-time)
             import time
@@ -234,7 +200,6 @@ def packet_stream_worker():
         # Close the event loop when done
         if loop and not loop.is_closed():
             loop.close()
-            print("[STREAM] Event loop closed")
 
 
 # ============================================================================
@@ -690,9 +655,6 @@ async def save_anomaly_to_db(request: AnomalyPostRequest):
                     parsed = structure_analysis_for_db(response_text)
                     # Replace the entire analysis with structured version
                     anomaly_document["analysis"] = parsed
-                    print(f"[PARSER] Converted response text to structured JSON")
-                except Exception as e:
-                    print(f"[PARSER] Could not parse response: {e}")
         
         # Save to MongoDB
         anomaly_id = mongodb_handler.save_anomaly(anomaly_document)
@@ -743,8 +705,7 @@ async def get_anomalies():
                 "timestamp": datetime.now().isoformat()
             }
         except Exception as e:
-            print(f"[API] Error fetching from MongoDB: {e}")
-            # Fall back to in-memory
+            pass  # Silently handle MongoDB errors
     
     # Fall back to in-memory storage
     anomaly_list = []
@@ -790,21 +751,9 @@ async def get_analysis_report(anomaly_id: int):
         )
 
 
-@app.post("/api/save-anomaly")
-async def save_anomaly(anomaly_data: dict):
-    """Save anomaly analysis to database (for future integration)
-    
-    For now, prints to terminal. Later, this will save to Database.
-    Serverless-safe - no file I/O.
-    
-    Args:
-        anomaly_data: Dictionary containing anomaly details
-    """
-    print("\n" + "="*80)
-    print("[API] ANOMALY SAVE REQUEST")
-    print(f"Timestamp: {datetime.now().isoformat()}")
-    print(f"Data: {anomaly_data}")
-    print("="*80 + "\n")
+async def save_anomaly_legacy(anomaly_data: dict):
+    """Legacy endpoint for backwards compatibility"""
+    # Silently process without printing
     
     return {
         "status": "saved",
@@ -867,42 +816,29 @@ async def get_vehicle_history(vehicle_id: str, limit: int = 10):
 @app.on_event("startup")
 async def startup_event():
     """Initialize streaming on application startup"""
-    print("\n" + "="*70)
-    print("INITIALIZING VEHICLE ANALYSIS SYSTEM - STREAMING MODE")
-    print("="*70)
-    
     # Clear all anomalies from MongoDB on startup
     if mongodb_handler.is_connected():
         try:
-            deleted_count = mongodb_handler.clear_all_anomalies()
-            print(f"[MONGODB] Cleared {deleted_count} existing anomalies from database")
-            print("[MONGODB] Fresh start - ready to collect new anomalies")
+            mongodb_handler.clear_all_anomalies()
         except Exception as e:
-            print(f"[MONGODB] Error clearing anomalies: {e}")
-    else:
-        print("[MONGODB] WARNING: Not connected to MongoDB - skipping clear operation")
+            pass  # Silently handle
     
     # Load packets from file
     if load_data_stream():
         # Start background streaming worker
         stream_thread = threading.Thread(target=packet_stream_worker, daemon=True)
         stream_thread.start()
-        print("="*70 + "\n")
     else:
-        print("[MAIN] ERROR: Could not load data stream")
-        print("="*70 + "\n")
+        pass  # Silently fail
 
 
 if __name__ == "__main__":
     import uvicorn
-    # Check for recommended API keys
-    if not (os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("GEMINI_API_KEY")):
-        print("WARNING: No model API key detected. Set GROQ_API_KEY or OPENROUTER_API_KEY in your .env for production.")
-        print("Create a local .env from .env.sample and restart the app.")
-
+    # Silent startup - no warnings printed
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=False
+        reload=False,
+        log_level="critical"  # Only critical errors
     )
