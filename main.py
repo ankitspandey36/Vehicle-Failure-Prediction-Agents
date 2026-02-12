@@ -655,6 +655,8 @@ async def save_anomaly_to_db(request: AnomalyPostRequest):
                     parsed = structure_analysis_for_db(response_text)
                     # Replace the entire analysis with structured version
                     anomaly_document["analysis"] = parsed
+                except Exception:
+                    pass  # Silent error handling
         
         # Save to MongoDB
         anomaly_id = mongodb_handler.save_anomaly(anomaly_document)
