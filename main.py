@@ -11,12 +11,12 @@ import threading
 import asyncio
 from collections import deque
 
-from agents_final import route_query, get_comprehensive_analysis
+from agents_final import route_query, get_comprehensive_analysis, route_rca_capa
 from utils import VehicleDataManager, AnalysisLogger
 from fetch import load_packets, convert_decimal, normalize_packet
 from predefined_Rules import ruleGate, load_manufacturing_database
 from mongodb_handler import MongoDBHandler
-from response_parser import structure_analysis_for_db
+from response_parser import structure_analysis_for_db, structure_rca_capa_for_db, structure_llm_response_for_db
 
 # Data source: newData.json (rich telemetry)
 # Use absolute path to handle any working directory
@@ -67,6 +67,7 @@ stream_active = False
 data_load_status = "pending"
 data_load_message = ""
 latest_analysis = None
+rca_capa_triggered = False  # Flag to track if RCA/CAPA has been triggered for current buffer
 
 
 def load_data_stream():
@@ -94,12 +95,81 @@ def load_data_stream():
         return False
 
 
+async def trigger_rca_capa_analysis():
+    """
+    Trigger RCA/CAPA analysis when buffer reaches 20 items.
+    Analyzes accumulated anomalies and provides root cause analysis and preventive actions.
+    This runs asynchronously and stores results in MongoDB.
+    """
+    global rolling_buffer, anomalies_detected, latest_analysis, rca_capa_triggered
+    
+    try:
+        analysis_context = {
+            "processed_packets": list(rolling_buffer),
+            "anomalies_detected": anomalies_detected,
+            "total_packets": len(processed_packets),
+            "total_anomalies": len(anomalies_detected)
+        }
+        
+        # Run RCA/CAPA analysis
+        result = await route_rca_capa(
+            vehicle_id="default",
+            data_manager=data_manager,
+            analysis_context=analysis_context
+        )
+        
+        # Parse the RCA/CAPA response
+        raw_response = result.get("response", "")
+        parsed_rca_capa = structure_rca_capa_for_db(raw_response)
+        
+        # Create document for RCA/CAPA storage
+        rca_capa_document = {
+            "vehicle_id": "default",
+            "timestamp": datetime.utcnow().isoformat(),
+            "buffer_size": len(rolling_buffer),
+            "anomalies_count": len(anomalies_detected),
+            "parsed_data": parsed_rca_capa,
+            "affected_components": parsed_rca_capa.get("affected_components", []),
+            "oem_owners": parsed_rca_capa.get("oem_owners", []),
+            "safety_criticality": parsed_rca_capa.get("safety_criticality", "Unknown"),
+            "raw_response_preview": raw_response[:200]  # Store first 200 chars for debugging
+        }
+        
+        # Save RCA/CAPA to MongoDB
+        if mongodb_handler.is_connected():
+            rca_id = mongodb_handler.save_rca_capa(rca_capa_document)
+            
+            # Also save as LLM response
+            llm_response_doc = {
+                "vehicle_id": "default",
+                "agent_type": "rca_capa",
+                "timestamp": datetime.utcnow().isoformat(),
+                "parsed_data": parsed_rca_capa,
+                "rca_capa_id": rca_id,
+                "raw_response_preview": raw_response[:200]
+            }
+            mongodb_handler.save_llm_response(llm_response_doc)
+        
+        # Update latest analysis
+        latest_analysis = {
+            "timestamp": datetime.now().isoformat(),
+            "agent": "rca_capa",
+            "structured_data": parsed_rca_capa,
+            "buffer_size": len(rolling_buffer),
+            "anomalies_analyzed": len(anomalies_detected)
+        }
+        
+    except Exception as e:
+        pass  # Silently log errors
+
+
 def packet_stream_worker():
     """
     Background worker that continuously processes packets like real-time data.
     Processes 1 packet per second, checks rules, and triggers analysis on anomalies.
+    Triggers RCA/CAPA analysis when buffer reaches 20 items.
     """
-    global processed_packets, anomalies_detected, rolling_buffer, current_packet_index, stream_active, latest_analysis
+    global processed_packets, anomalies_detected, rolling_buffer, current_packet_index, stream_active, latest_analysis, rca_capa_triggered
     
     if not processed_packets:
         return
@@ -195,6 +265,21 @@ def packet_stream_worker():
             # Sleep 1 second per packet (simulating real-time)
             import time
             time.sleep(1)
+            
+            # ============================================================================
+            # RCA/CAPA TRIGGER: Analyze when buffer reaches 20 items
+            # ============================================================================
+            if len(rolling_buffer) >= 20 and not rca_capa_triggered:
+                rca_capa_triggered = True  # Prevent repeated triggers on same buffer
+                try:
+                    # Trigger RCA/CAPA analysis asynchronously
+                    loop.run_until_complete(trigger_rca_capa_analysis())
+                except Exception as e:
+                    pass  # Silently log errors
+            
+            # Reset flag when buffer clears (less than 20 items)
+            if len(rolling_buffer) < 20:
+                rca_capa_triggered = False
     
     finally:
         # Close the event loop when done
@@ -812,16 +897,327 @@ async def get_vehicle_history(vehicle_id: str, limit: int = 10):
 
 
 # ============================================================================
+# RCA/CAPA ENDPOINTS
+# ============================================================================
+
+@app.post("/rca_capa")
+async def trigger_rca_capa():
+    """
+    Manually trigger RCA/CAPA analysis using current buffer data.
+    
+    This endpoint triggers a comprehensive Root Cause Analysis and Corrective/Preventive Actions analysis
+    using the accumulated data in the rolling buffer and detected anomalies.
+    
+    Returns:
+        RCA/CAPA analysis with parsed root causes and recommended actions
+    """
+    # Verify streaming is active
+    if not stream_active or not processed_packets:
+        raise HTTPException(
+            status_code=503,
+            detail="Data stream not active. Check /health for status."
+        )
+    
+    try:
+        # Run RCA/CAPA analysis
+        result = await route_rca_capa(
+            vehicle_id="default",
+            data_manager=data_manager,
+            analysis_context={
+                "processed_packets": list(rolling_buffer),
+                "anomalies_detected": anomalies_detected,
+                "total_packets": current_packet_index,
+                "total_anomalies": len(anomalies_detected)
+            }
+        )
+        
+        # Parse the response
+        raw_response = result.get("response", "")
+        parsed_rca_capa = structure_rca_capa_for_db(raw_response)
+        
+        # Create RCA/CAPA document
+        rca_capa_document = {
+            "vehicle_id": "default",
+            "timestamp": datetime.utcnow().isoformat(),
+            "buffer_size": len(rolling_buffer),
+            "anomalies_count": len(anomalies_detected),
+            "manual_trigger": True,
+            "parsed_data": parsed_rca_capa,
+            "affected_components": parsed_rca_capa.get("affected_components", []),
+            "oem_owners": parsed_rca_capa.get("oem_owners", []),
+            "safety_criticality": parsed_rca_capa.get("safety_criticality", "Unknown")
+        }
+        
+        # Save to MongoDB
+        rca_id = None
+        if mongodb_handler.is_connected():
+            rca_id = mongodb_handler.save_rca_capa(rca_capa_document)
+            
+            # Also save as LLM response
+            llm_response_doc = {
+                "vehicle_id": "default",
+                "agent_type": "rca_capa",
+                "timestamp": datetime.utcnow().isoformat(),
+                "manual_trigger": True,
+                "parsed_data": parsed_rca_capa,
+                "rca_capa_id": rca_id
+            }
+            mongodb_handler.save_llm_response(llm_response_doc)
+        
+        return {
+            "status": "success",
+            "vehicle_id": "default",
+            "timestamp": datetime.now().isoformat(),
+            "buffer_size": len(rolling_buffer),
+            "anomalies_analyzed": len(anomalies_detected),
+            "rca_capa_id": rca_id,
+            "analysis": parsed_rca_capa
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error performing RCA/CAPA analysis: {str(e)}"
+        )
+
+
+@app.get("/rca_capa")
+async def get_rca_capa_data(vehicle_id: Optional[str] = None, oem_owner: Optional[str] = None, limit: int = 100):
+    """
+    Get all RCA/CAPA analyses from MongoDB
+    
+    Args:
+        vehicle_id: Optional filter by vehicle ID
+        oem_owner: Optional filter by OEM team owner
+        limit: Maximum number to return (default: 100)
+    
+    Returns:
+        List of RCA/CAPA analyses with root causes and preventive actions
+    """
+    if not mongodb_handler.is_connected():
+        return {
+            "status": "error",
+            "message": "MongoDB not connected",
+            "rca_capa_analyses": []
+        }
+    
+    try:
+        analyses = mongodb_handler.get_rca_capa_analyses(
+            vehicle_id=vehicle_id or "default",
+            limit=limit,
+            oem_owner=oem_owner
+        )
+        
+        total_count = mongodb_handler.get_rca_capa_count(
+            vehicle_id=vehicle_id or "default",
+            oem_owner=oem_owner
+        )
+        
+        return {
+            "status": "success",
+            "total_rca_capa_analyses": total_count,
+            "returned_count": len(analyses),
+            "vehicle_id": vehicle_id or "default",
+            "oem_owner_filter": oem_owner,
+            "rca_capa_analyses": analyses,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "rca_capa_analyses": []
+        }
+
+
+# ============================================================================
+# LLM RESPONSE ENDPOINTS
+# ============================================================================
+
+@app.get("/rca_capa_debug")
+async def get_rca_capa_debug(limit: int = 10):
+    """
+    DEBUG ENDPOINT: Get raw response previews from RCA/CAPA analyses
+    
+    Shows raw_response_preview to help debug parsing issues
+    """
+    if not mongodb_handler.is_connected():
+        return {
+            "status": "error",
+            "message": "MongoDB not connected"
+        }
+    
+    try:
+        analyses = mongodb_handler.get_rca_capa_analyses(vehicle_id="default", limit=limit)
+        
+        debug_data = []
+        for analysis in analyses:
+            debug_data.append({
+                "_id": analysis.get("_id"),
+                "timestamp": analysis.get("timestamp"),
+                "buffer_size": analysis.get("buffer_size"),
+                "anomalies_count": analysis.get("anomalies_count"),
+                "raw_response_preview": analysis.get("raw_response_preview", "No preview"),
+                "parsed_vehicle_id": analysis.get("parsed_data", {}).get("vehicle_id"),
+                "parsed_rca_count": len(analysis.get("parsed_data", {}).get("rca_analysis", [])),
+                "parsed_capa_count": len(analysis.get("parsed_data", {}).get("capa_analysis", []))
+            })
+        
+        return {
+            "status": "success",
+            "total": len(analyses),
+            "debug_data": debug_data
+        }
+    
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@app.post("/llm_response")
+async def save_llm_response_data(request: QueryRequest):
+    """
+    Save a detailed LLM response in parsed format to MongoDB.
+    
+    This endpoint allows manual saving of LLM responses with automatic parsing.
+    Responses are stored in structured format for easy retrieval and analysis.
+    
+    Args:
+        request: Query request with vehicle_id and query (used to generate response)
+    
+    Returns:
+        Saved LLM response document ID and parsed data
+    """
+    if not stream_active or not processed_packets:
+        raise HTTPException(
+            status_code=503,
+            detail="Data stream not active. Check /health for status."
+        )
+    
+    if not mongodb_handler.is_connected():
+        raise HTTPException(
+            status_code=503,
+            detail="MongoDB not connected"
+        )
+    
+    try:
+        # Get response from agent
+        result = await route_query(
+            query=request.query,
+            vehicle_id=request.vehicle_id,
+            data_manager=data_manager,
+            analysis_context={
+                "processed_packets": list(rolling_buffer),
+                "anomalies_detected": anomalies_detected,
+                "total_packets": current_packet_index,
+                "total_anomalies": len(anomalies_detected)
+            }
+        )
+        
+        # Parse the response
+        raw_response = result.get("response", "")
+        agent_type = result.get("agent", "unknown")
+        parsed_data = structure_llm_response_for_db(raw_response, agent_type)
+        
+        # Create LLM response document
+        llm_response_doc = {
+            "vehicle_id": request.vehicle_id,
+            "agent_type": agent_type,
+            "query": request.query,
+            "timestamp": datetime.utcnow().isoformat(),
+            "buffer_size": len(rolling_buffer),
+            "anomalies_count": len(anomalies_detected),
+            "parsed_data": parsed_data
+        }
+        
+        # Save to MongoDB
+        llm_id = mongodb_handler.save_llm_response(llm_response_doc)
+        
+        return {
+            "status": "success",
+            "vehicle_id": request.vehicle_id,
+            "llm_response_id": llm_id,
+            "agent_type": agent_type,
+            "timestamp": datetime.now().isoformat(),
+            "parsed_data": parsed_data
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error saving LLM response: {str(e)}"
+        )
+
+
+@app.get("/llm_response")
+async def get_llm_responses(vehicle_id: Optional[str] = None, agent_type: Optional[str] = None, limit: int = 100):
+    """
+    Get all parsed LLM responses from MongoDB
+    
+    Args:
+        vehicle_id: Optional filter by vehicle ID
+        agent_type: Optional filter by agent type (diagnostic, maintenance, performance, rca_capa)
+        limit: Maximum number to return (default: 100)
+    
+    Returns:
+        List of parsed LLM responses in structured JSON format
+    """
+    if not mongodb_handler.is_connected():
+        return {
+            "status": "error",
+            "message": "MongoDB not connected",
+            "llm_responses": []
+        }
+    
+    try:
+        responses = mongodb_handler.get_llm_responses(
+            vehicle_id=vehicle_id or "default",
+            agent_type=agent_type,
+            limit=limit
+        )
+        
+        total_count = mongodb_handler.get_llm_responses_count(
+            vehicle_id=vehicle_id or "default",
+            agent_type=agent_type
+        )
+        
+        return {
+            "status": "success",
+            "total_llm_responses": total_count,
+            "returned_count": len(responses),
+            "vehicle_id": vehicle_id or "default",
+            "agent_type_filter": agent_type,
+            "llm_responses": responses,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "llm_responses": []
+        }
+
+
+# ============================================================================
 # Run the application
 # ============================================================================
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize streaming on application startup"""
-    # Clear all anomalies from MongoDB on startup
+    # Clear all old data from MongoDB on startup
     if mongodb_handler.is_connected():
         try:
+            # Clear anomalies
             mongodb_handler.clear_all_anomalies()
+            # Clear RCA/CAPA analyses
+            mongodb_handler.clear_all_rca_capa()
+            # Clear LLM responses
+            mongodb_handler.clear_all_llm_responses()
         except Exception as e:
             pass  # Silently handle
     

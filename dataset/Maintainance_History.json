@@ -1,0 +1,183 @@
+{
+  "vehicle_id": "XUV400EV-IND-000872",
+  "model_name": "Mahindra XUV400 EV",
+  "variant": "EL_PRO",
+  "oem_id": "MAHINDRA_AUTO",
+  "manufacturing_date": "2023-06-18",
+  "current_odometer_km": 48250,
+
+  "maintenance_history": [
+    {
+      "event_id": "MH-0001",
+      "date_utc": "2023-09-22T10:30:00Z",
+      "odometer_km": 4200,
+      "service_center_id": "SC_NOIDA_03",
+      "event_type": "scheduled_service",
+      "driver_complaint": "None (first inspection)",
+      "observed_symptoms": [],
+      "diagnostics": {
+        "battery_soh_pct": 99.1,
+        "battery_temp_sensor_spread_c": 1.2,
+        "brake_pad_wear_level_pct": 4.5,
+        "ecu_error_codes": []
+      },
+      "actions_performed": [
+        "General inspection",
+        "ECU firmware baseline validation",
+        "Torque verification on HV fasteners"
+      ],
+      "parts_replaced": [],
+      "remarks": "Vehicle operating within nominal limits. No anomalies detected.",
+      "linked_fmea_ids": [],
+      "confidence_score_pct": 98.0
+    },
+
+    {
+      "event_id": "MH-0002",
+      "date_utc": "2024-02-14T09:10:00Z",
+      "odometer_km": 11850,
+      "service_center_id": "SC_NOIDA_01",
+      "event_type": "unscheduled_service",
+      "driver_complaint": "Reduced braking feel during heavy traffic",
+      "observed_symptoms": [
+        "Elevated brake disc temperature",
+        "Higher than expected brake pad wear"
+      ],
+      "diagnostics": {
+        "brake_disc_temperature_c": 132.6,
+        "regen_braking_contribution_pct": 22.1,
+        "brake_pad_wear_level_pct": 31.4
+      },
+      "actions_performed": [
+        "Brake system inspection",
+        "Regen calibration check",
+        "Pad compound verification"
+      ],
+      "parts_replaced": [
+        {
+          "part_name": "Front brake pads",
+          "supplier_id": "LOCAL_BP_042",
+          "reason": "Accelerated wear due to thermal load"
+        }
+      ],
+      "remarks": "Pad wear higher than expected for mileage. Regen contribution lower than standard profile.",
+      "linked_fmea_ids": ["FMEA-BRK-TEMP-001"],
+      "confidence_score_pct": 84.7
+    },
+
+    {
+      "event_id": "MH-0003",
+      "date_utc": "2024-07-03T11:45:00Z",
+      "odometer_km": 21400,
+      "service_center_id": "SC_NOIDA_06",
+      "event_type": "scheduled_service",
+      "driver_complaint": "Occasional warning during fast charging",
+      "observed_symptoms": [
+        "Battery temperature spread under load"
+      ],
+      "diagnostics": {
+        "battery_temperature_max_c": 41.8,
+        "battery_temp_sensor_spread_c": 4.9,
+        "coolant_flow_lpm": 7.6
+      },
+      "actions_performed": [
+        "Battery thermal inspection",
+        "Coolant flow verification",
+        "Software update for thermal monitoring thresholds"
+      ],
+      "parts_replaced": [],
+      "remarks": "Temperature spread approaching alert threshold; no immediate risk but trending.",
+      "linked_fmea_ids": ["FMEA-BAT-THERM-001"],
+      "confidence_score_pct": 73.5
+    },
+
+    {
+      "event_id": "MH-0004",
+      "date_utc": "2025-01-18T08:55:00Z",
+      "odometer_km": 30220,
+      "service_center_id": "SC_NOIDA_03",
+      "event_type": "unscheduled_service",
+      "driver_complaint": "Reduced driving range and fast SOC drop",
+      "observed_symptoms": [
+        "Voltage imbalance",
+        "Localized battery heating"
+      ],
+      "diagnostics": {
+        "battery_cell_delta_mV": 78.4,
+        "battery_temp_sensor_spread_c": 6.2,
+        "battery_temp_rise_rate_c_per_min": 2.9
+      },
+      "actions_performed": [
+        "Battery module thermal imaging",
+        "Coolant channel inspection",
+        "TIM compression audit"
+      ],
+      "parts_replaced": [
+        {
+          "part_name": "Battery module (Module-04)",
+          "supplier_id": "CELL_SUP_A",
+          "reason": "Thermal hotspot due to TIM compression variance"
+        }
+      ],
+      "remarks": "Confirmed localized thermal hotspot; proactive module replacement performed.",
+      "linked_fmea_ids": ["FMEA-BAT-THERM-001"],
+      "confidence_score_pct": 91.2
+    },
+
+    {
+      "event_id": "MH-0005",
+      "date_utc": "2025-06-07T10:20:00Z",
+      "odometer_km": 36500,
+      "service_center_id": "SC_NOIDA_04",
+      "event_type": "scheduled_service",
+      "driver_complaint": "Steering vibration at highway speeds",
+      "observed_symptoms": [
+        "Increased chassis stress index",
+        "Suspension travel variance"
+      ],
+      "diagnostics": {
+        "chassis_stress_index": 1.38,
+        "suspension_travel_variance_mm": 3.9,
+        "steering_torque_nm": 44.1
+      },
+      "actions_performed": [
+        "Suspension bushing hardness test",
+        "Steering calibration",
+        "Wheel alignment"
+      ],
+      "parts_replaced": [
+        {
+          "part_name": "Front lower control arm bushings",
+          "reason": "Hardness drift beyond tolerance"
+        }
+      ],
+      "remarks": "Bushing hardness variation caused increased vibration transmission.",
+      "linked_fmea_ids": ["CHS-BSH-001"],
+      "confidence_score_pct": 88.0
+    },
+
+    {
+      "event_id": "MH-0006",
+      "date_utc": "2025-11-12T09:40:00Z",
+      "odometer_km": 44100,
+      "service_center_id": "SC_NOIDA_06",
+      "event_type": "predictive_service",
+      "trigger_source": "AI_predictive_maintenance",
+      "observed_symptoms": [
+        "Increasing inverter temperature trend"
+      ],
+      "diagnostics": {
+        "inverter_temperature_c": 82.6,
+        "voltage_drop_rate_v_per_sec": 0.048
+      },
+      "actions_performed": [
+        "Inverter thermal paste inspection",
+        "Firmware thermal derating adjustment"
+      ],
+      "parts_replaced": [],
+      "remarks": "Early-stage thermal risk detected; corrective action prevented failure.",
+      "linked_fmea_ids": ["INV-TH-001"],
+      "confidence_score_pct": 79.4
+    }
+  ]
+}

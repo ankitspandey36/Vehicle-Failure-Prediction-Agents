@@ -49,10 +49,18 @@ class MongoDBHandler:
         # Get database and collections
         self.db = self.client['vehicle_analysis']
         self.anomalies_collection = self.db['anomalies']
+        self.rca_capa_collection = self.db['rca_capa']
+        self.llm_responses_collection = self.db['llm_responses']
         
-        # Create index for faster queries
+        # Create indexes for faster queries
         self.anomalies_collection.create_index('timestamp')
         self.anomalies_collection.create_index('vehicle_id')
+        self.rca_capa_collection.create_index('timestamp')
+        self.rca_capa_collection.create_index('vehicle_id')
+        self.rca_capa_collection.create_index('oem_owner')
+        self.llm_responses_collection.create_index('timestamp')
+        self.llm_responses_collection.create_index('vehicle_id')
+        self.llm_responses_collection.create_index('agent_type')
     
     def is_connected(self) -> bool:
         """Check if MongoDB is connected"""
@@ -222,6 +230,239 @@ class MongoDBHandler:
             return result.deleted_count
         except Exception as e:
             print(f"[MONGODB] Error clearing anomalies: {e}")
+            return 0
+    
+    def save_rca_capa(self, rca_capa_data: Dict) -> Optional[str]:
+        """
+        Save RCA/CAPA analysis to MongoDB
+        
+        Args:
+            rca_capa_data: Dictionary containing RCA/CAPA analysis
+                Expected keys: vehicle_id, parsed_rca_capa, raw_response, oem_owners, etc.
+        
+        Returns:
+            Document ID if successful, None otherwise
+        """
+        if not self.is_connected():
+            print("[MONGODB] Not connected - cannot save RCA/CAPA")
+            return None
+        
+        try:
+            # Add timestamp if not present
+            if 'timestamp' not in rca_capa_data:
+                rca_capa_data['timestamp'] = datetime.utcnow().isoformat()
+            
+            # Insert into MongoDB
+            result = self.rca_capa_collection.insert_one(rca_capa_data)
+            return str(result.inserted_id)
+        except Exception as e:
+            print(f"[MONGODB] Error saving RCA/CAPA: {e}")
+            return None
+    
+    def get_rca_capa_analyses(self, vehicle_id: Optional[str] = None, limit: int = 100, oem_owner: Optional[str] = None) -> List[Dict]:
+        """
+        Retrieve RCA/CAPA analyses from MongoDB
+        
+        Args:
+            vehicle_id: Optional filter by vehicle ID
+            limit: Maximum number of documents to return
+            oem_owner: Optional filter by OEM team owner
+        
+        Returns:
+            List of RCA/CAPA documents
+        """
+        if not self.is_connected():
+            return []
+        
+        try:
+            query = {}
+            if vehicle_id:
+                query['vehicle_id'] = vehicle_id
+            if oem_owner:
+                query['oem_owner'] = oem_owner
+            
+            analyses = list(
+                self.rca_capa_collection
+                .find(query)
+                .sort('timestamp', -1)
+                .limit(limit)
+            )
+            
+            # Convert ObjectId to string
+            for analysis in analyses:
+                analysis['_id'] = str(analysis['_id'])
+            
+            return analyses
+        except Exception as e:
+            print(f"[MONGODB] Error fetching RCA/CAPA analyses: {e}")
+            return []
+    
+    def save_llm_response(self, llm_response_data: Dict) -> Optional[str]:
+        """
+        Save detailed LLM response (parsed format) to MongoDB
+        
+        Args:
+            llm_response_data: Dictionary containing parsed LLM response
+                Expected keys: vehicle_id, agent_type, parsed_data, timestamp, etc.
+        
+        Returns:
+            Document ID if successful, None otherwise
+        """
+        if not self.is_connected():
+            print("[MONGODB] Not connected - cannot save LLM response")
+            return None
+        
+        try:
+            # Add timestamp if not present
+            if 'timestamp' not in llm_response_data:
+                llm_response_data['timestamp'] = datetime.utcnow().isoformat()
+            
+            # Insert into MongoDB
+            result = self.llm_responses_collection.insert_one(llm_response_data)
+            return str(result.inserted_id)
+        except Exception as e:
+            print(f"[MONGODB] Error saving LLM response: {e}")
+            return None
+    
+    def get_llm_responses(self, vehicle_id: Optional[str] = None, agent_type: Optional[str] = None, limit: int = 100) -> List[Dict]:
+        """
+        Retrieve parsed LLM responses from MongoDB
+        
+        Args:
+            vehicle_id: Optional filter by vehicle ID
+            agent_type: Optional filter by agent type (diagnostic, maintenance, performance, rca_capa)
+            limit: Maximum number of documents to return
+        
+        Returns:
+            List of LLM response documents
+        """
+        if not self.is_connected():
+            return []
+        
+        try:
+            query = {}
+            if vehicle_id:
+                query['vehicle_id'] = vehicle_id
+            if agent_type:
+                query['agent_type'] = agent_type
+            
+            responses = list(
+                self.llm_responses_collection
+                .find(query)
+                .sort('timestamp', -1)
+                .limit(limit)
+            )
+            
+            # Convert ObjectId to string
+            for response in responses:
+                response['_id'] = str(response['_id'])
+            
+            return responses
+        except Exception as e:
+            print(f"[MONGODB] Error fetching LLM responses: {e}")
+            return []
+    
+    def get_rca_capa_count(self, vehicle_id: Optional[str] = None, oem_owner: Optional[str] = None) -> int:
+        """
+        Get count of RCA/CAPA analyses
+        
+        Args:
+            vehicle_id: Optional filter by vehicle ID
+            oem_owner: Optional filter by OEM owner
+        
+        Returns:
+            Count of RCA/CAPA documents
+        """
+        if not self.is_connected():
+            return 0
+        
+        try:
+            query = {}
+            if vehicle_id:
+                query['vehicle_id'] = vehicle_id
+            if oem_owner:
+                query['oem_owner'] = oem_owner
+            
+            return self.rca_capa_collection.count_documents(query)
+        except Exception as e:
+            print(f"[MONGODB] Error counting RCA/CAPA: {e}")
+            return 0
+    
+    def get_llm_responses_count(self, vehicle_id: Optional[str] = None, agent_type: Optional[str] = None) -> int:
+        """
+        Get count of LLM responses
+        
+        Args:
+            vehicle_id: Optional filter by vehicle ID
+            agent_type: Optional filter by agent type
+        
+        Returns:
+            Count of LLM response documents
+        """
+        if not self.is_connected():
+            return 0
+        
+        try:
+            query = {}
+            if vehicle_id:
+                query['vehicle_id'] = vehicle_id
+            if agent_type:
+                query['agent_type'] = agent_type
+            
+            return self.llm_responses_collection.count_documents(query)
+        except Exception as e:
+            print(f"[MONGODB] Error counting LLM responses: {e}")
+            return 0
+    
+    def clear_all_rca_capa(self, vehicle_id: Optional[str] = None) -> int:
+        """
+        Clear all RCA/CAPA analyses (or for a specific vehicle)
+        
+        Args:
+            vehicle_id: Optional filter by vehicle ID
+        
+        Returns:
+            Number of deleted documents
+        """
+        if not self.is_connected():
+            return 0
+        
+        try:
+            query = {}
+            if vehicle_id:
+                query['vehicle_id'] = vehicle_id
+            
+            result = self.rca_capa_collection.delete_many(query)
+            return result.deleted_count
+        except Exception as e:
+            print(f"[MONGODB] Error clearing RCA/CAPA: {e}")
+            return 0
+    
+    def clear_all_llm_responses(self, vehicle_id: Optional[str] = None, agent_type: Optional[str] = None) -> int:
+        """
+        Clear all LLM responses (or for a specific vehicle/agent)
+        
+        Args:
+            vehicle_id: Optional filter by vehicle ID
+            agent_type: Optional filter by agent type
+        
+        Returns:
+            Number of deleted documents
+        """
+        if not self.is_connected():
+            return 0
+        
+        try:
+            query = {}
+            if vehicle_id:
+                query['vehicle_id'] = vehicle_id
+            if agent_type:
+                query['agent_type'] = agent_type
+            
+            result = self.llm_responses_collection.delete_many(query)
+            return result.deleted_count
+        except Exception as e:
+            print(f"[MONGODB] Error clearing LLM responses: {e}")
             return 0
     
     def close(self):

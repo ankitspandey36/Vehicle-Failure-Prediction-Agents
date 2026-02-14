@@ -1,0 +1,653 @@
+{
+  "knowledge_base_version": "2026-01-31",
+  "vehicle_reference": {
+    "model_name": "Mahindra XUV400 EV",
+      "vehicle_id": "MH_XUV400_EV_001",
+      "vin": "MA1EVXUV4P1234567",
+      "oem_id": "MAHINDRA_AUTO",
+      "variant_id": "EL_PRO",
+      "manufacturing_batch_id": "BATCH_XUV400_2023_Q4",
+      "vehicle_state": "ON",
+      "data_frequency": "1s",
+    "platform": "Compact EV Monocoque",
+    "variant": "EL_PRO",
+    "design_life_km": 200000,
+    "design_life_years": 10,
+    "notes": "Synthetic OEM-grade dataset for RCA and CAPA modelling. All numeric values are representative engineering values with high precision and tolerances."
+  },
+
+  "traceability": {
+    "document_id": "KB_XUV400_EV_V3_EXPANDED_20260131",
+    "created_by": "synthetic_oem_generator_v1",
+    "last_updated_utc": "2026-01-31T09:00:00Z",
+    "units": "SI",
+    "precision": {
+      "default_decimal_places": 3,
+      "engineering_decimal_places": {
+        "percentages": 2,
+        "voltages": 3,
+        "currents": 2,
+        "temperatures": 2,
+        "mechanical_dims_mm": 2
+      }
+    }
+  },
+
+  "global_quality_targets": {
+    "process_capability_targets": {
+      "cpk_min": 1.33,
+      "cpk_target": 1.67,
+      "ocl_max_defect_rate_ppm": 50,
+      "mtbf_target_hours": 50000
+    },
+    "statistical_assumptions": {
+      "confidence_interval": 0.95,
+      "spc_chart_rules": {
+        "control_limit_multiplier": 3,
+        "alarm_rule_1": "One point beyond 3σ",
+        "alarm_rule_2": "Two out of three beyond 2σ same side",
+        "alarm_rule_3": "Eight consecutive points same side of center"
+      }
+    }
+  },
+
+  "metrology_and_instruments": {
+    "torque_wrench": {
+      "model_example": "TW-1100",
+      "calibration_interval_days": 30,
+      "accuracy_pct": 0.8,
+      "resolution_nm": 0.1,
+      "traceable_to": "national_standard_lab"
+    },
+    "thermocouple_probe": {
+      "type": "K-type",
+      "calibration_interval_days": 14,
+      "accuracy_c": 0.5,
+      "response_time_s": 1.2
+    },
+    "laser_welder": {
+      "model_example": "LW-2k",
+      "power_w": 2000,
+      "process_control_resolution_percent": 0.5
+    },
+    "flow_meter": {
+      "type": "ultrasonic",
+      "accuracy_pct": 1.0,
+      "calibration_interval_days": 60
+    }
+  },
+
+  "fasteners_and_hardware": {
+    "nuts_bolts": {
+      "bolt_grade": "10.9",
+      "material": {
+        "alloy_steel_pct": 95.00,
+        "zinc_plating_pct": 5.00
+      },
+      "thread_class": "6g",
+      "torque_specs": {
+        "m8": {
+          "nominal_torque_nm": 25.0,
+          "torque_tolerance_pct": 6.0,
+          "preload_target_kn": 8.5
+        },
+        "m10": {
+          "nominal_torque_nm": 50.0,
+          "torque_tolerance_pct": 6.0,
+          "preload_target_kn": 18.0
+        }
+      },
+      "manufacturing_risks": [
+        {
+          "risk_id": "FST-001",
+          "description": "Surface micro-crack from cold forging",
+          "detection_method": "Visual + dye-penetrant (NDT)",
+          "detection_limit_mm": 0.02,
+          "recommended_action": "Increase die maintenance frequency; ultrasonic inspection every 1000 pieces"
+        }
+      ]
+    },
+    "washers": {
+      "material": {
+        "steel_pct": 93.00,
+        "phosphate_coating_pct": 7.00
+      },
+      "dimensional_tolerances_mm": {
+        "outer_diameter": { "nominal_mm": 20.00, "tol_mm": 0.10 },
+        "inner_diameter": { "nominal_mm": 8.50, "tol_mm": 0.05 },
+        "thickness": { "nominal_mm": 1.60, "tol_mm": 0.05 }
+      }
+    }
+  },
+
+  "battery_system": {
+    "cell": {
+      "form_factor": "Prismatic",
+      "chemistry": "NMC",
+      "nominal_voltage_v": 3.700,
+      "nominal_capacity_ah": 110.00,
+      "energy_wh": 407.00,
+      "material_composition_pct": {
+        "nickel": 60.000,
+        "manganese": 20.000,
+        "cobalt": 20.000,
+        "anode_graphite": 94.500,
+        "anode_silicon": 5.500
+      },
+      "material_properties": {
+        "cell_density_g_per_cm3": 2.30,
+        "specific_heat_j_per_kgk": 820.00,
+        "thermal_conductivity_w_per_mk": 1.2
+      },
+      "manufacturing_parameters": {
+        "electrode_coating_thickness_um": { "nominal": 120.00, "tol_plus_minus_um": 5.00 },
+        "drying_temperature_c": 120.00,
+        "drying_time_min": 240,
+        "electrolyte_fill_volume_ml": { "nominal": 45.00, "tol_ml": 0.5 },
+        "welding_current_a": { "spot_weld": 250.0, "tolerance_pct": 3.0 }
+      },
+      "inspection_and_tests": {
+        "incoming_qc": ["X-ray imaging 0.1 mm resolution", "DC internal resistance measurement (mΩ)"],
+        "eol_tests": ["Capacity at C/3, Initial SOH estimate", "Leak test @ 0.05 bar"],
+        "acceptance_criteria": {
+          "internal_resistance_mohm_max": 3.500,
+          "capacity_percent_of_nominal_min": 98.00
+        }
+      },
+      "fmea": [
+        {
+          "id": "BAT-C-001",
+          "failure_mode": "Electrode delamination",
+          "effects": "Sudden cell capacity drop / internal resistance increase",
+          "severity": 9,
+          "occurrence": 2,
+          "detectability": 3,
+          "rpn": 54,
+          "root_causes": ["coating_thickness_variation", "inadequate_drying"],
+          "recommended_actions": ["tighten coating tolerances to ±2%", "add post-dry visual + acoustic inspection"]
+        }
+      ]
+    },
+
+    "module": {
+      "cells_per_module": 48,
+      "module_frame": {
+        "material_composition_pct": { "aluminum_6061": 88.500, "polymer_iso": 11.500 },
+        "dimensional_tolerance_mm": { "length": { "nominal_mm": 350.00, "tol_mm": 0.50 }, "width": { "nominal_mm": 120.00, "tol_mm": 0.30 } }
+      },
+      "thermal_design": {
+        "thermal_interface_material": "silicone_pcm",
+        "tim_thickness_mm": { "nominal": 1.50, "tol_mm": 0.10 },
+        "contact_pressure_kpa": { "nominal": 25.0, "tol_pct": 8.0 }
+      },
+      "manufacturing_steps": [
+        { "step": "cell stacking", "control_parameter": "spacing_mm", "nominal": 0.25, "tol_mm": 0.05 },
+        { "step": "laser welding tabs", "power_w": 1200, "pulse_ms": 7.5 },
+        { "step": "potting", "compound": "epoxy_flexible", "cure_temp_c": 60, "cure_time_hr": 4 }
+      ],
+      "known_failure_modes": [
+        {
+          "id": "MOD-001",
+          "failure": "Module thermal gradient > 6.0 °C",
+          "root_cause": "Incomplete TIM coverage or compression variance",
+          "sensors": ["battery_temp_sensor_spread", "battery_temperature_max_c"],
+          "detection_method": "multi-point temp sweep under 1C load",
+          "recommended_capa": ["increase TIM thickness uniformity check", "add servo compression station"]
+        }
+      ]
+    },
+
+    "pack": {
+      "pack_nominal_voltage_v": 375.150,
+      "pack_capacity_kwh": 39.400,
+      "busbar": { "material": { "copper_pct": 99.00, "silver_plating_pct": 1.00 }, "cross_section_mm2": 250.0 },
+      "cooling": {
+        "coolant_type": "propylene_glycol_30pct",
+        "coolant_flow_nominal_lpm": { "nominal": 8.5, "tol_lpm": 0.5 },
+        "coolant_channel_cross_section_mm2": { "nominal": 18.0, "tol_mm2": 1.0 }
+      },
+      "assembly_and_tests": {
+        "pack_sealing_ip": "IP67",
+        "leak_test_threshold_mbar": 0.05,
+        "thermal_soak_test": { "duration_min": 120, "load_kw": 5.0 },
+        "eol_acceptance": { "soh_initial_pct_min": 95.00, "pack_voltage_balance_mV_max": 50 }
+      },
+      "reliability_metrics": {
+        "early_life_failure_rate_ppm_1000h": 15,
+        "wearout_failure_rate_percent_per_year": 0.45
+      }
+    }
+  },
+
+  "motor_and_inverter": {
+    "motor": {
+      "type": "PMSM",
+      "rated_power_kw": 110.0,
+      "max_rpm": 12000,
+      "stator": {
+        "lamination_thickness_mm": { "nominal": 0.35, "tol_mm": 0.01 },
+        "winding_copper_area_mm2": { "nominal": 150.0, "tol_mm2": 1.0 },
+        "insulation_class": "H",
+        "impregnation_vacuum_pressure_mbar": { "nominal": -80, "tol_mbar": 5 }
+      },
+      "rotor": {
+        "magnet_type": "NdFeB",
+        "magnet_positional_tolerance_mm": 0.05,
+        "balancing_grade_g": 0.5
+      },
+      "bearing": {
+        "type": "sealed_roller",
+        "lubricant": "synthetic_moly",
+        "lifetime_hours_nominal": 60000
+      },
+      "tests_and_acceptance": {
+        "dyno_torque_test": { "torque_nominal_nm": 182.6, "torque_tolerance_pct": 5.0 },
+        "vibration_limit_g": 3.5,
+        "temperature_rise_limit_c_under_load": 70.0
+      },
+      "fmea_examples": [
+        {
+          "id": "MOT-TR-001",
+          "failure_mode": "Torque ripple",
+          "severity": 7,
+          "occurrence": 3,
+          "detectability": 4,
+          "rpn": 84,
+          "root_causes": ["magnet_offset", "stator_winding_mismatch"],
+          "recommended_actions": ["tighten magnet insertion jig to ±0.03 mm", "automated torque ripple scan on dyno @ 25%/50%/100% load"]
+        }
+      ]
+    },
+
+    "inverter": {
+      "pcb": {
+        "layers": 8,
+        "fr4_thickness_mm": 1.60,
+        "trace_thickness_um": 70,
+        "solder_alloy": "Sn96Ag3Cu1",
+        "conformal_coating_thickness_um": 50
+      },
+      "power_devices": {
+        "sic_mosfet_pct": 30.000,
+        "silicon_igbt_pct": 70.000,
+        "thermal_resistance_device_c_per_w": 0.12
+      },
+      "thermal_management": {
+        "heatsink_contact_thermal_resistance_c_per_w": 0.20,
+        "thermal_paste_coverage_pct_min": 95.00,
+        "potting_compound": "silicone_gel_med_viscosity"
+      },
+      "manufacturing_controls": {
+        "reflow_profile": { "preheat_c": 150.0, "reflow_peak_c": 245.0, "time_above_liquidus_s": 60 },
+        "xray_inspection_pct_of_boards": 20,
+        "functional_test": ["power_cycle", "insulation_resistance_test", "short-circuit_protection_test"]
+      },
+      "known_failures": [
+        {
+          "id": "INV-TH-001",
+          "failure": "Inverter thermal runaway",
+          "root_cause": "Incomplete thermal paste coverage; voids in potting",
+          "sensor_links": ["inverter_temperature_c", "voltage_drop_rate_v_per_sec"],
+          "detection_signatures": ["sustained inverter_temperature_c > 85°C under partial load", "spike in voltage_drop_rate"],
+          "capa": ["automated thermal paste dispense mapping + vision check", "increase X-ray inspection threshold for voids"]
+        }
+      ]
+    }
+  },
+
+  "braking_and_regeneration": {
+    "brake_disc": {
+      "material_composition_pct": {
+        "cast_iron": 80.000,
+        "carbon": 3.000,
+        "silicon": 2.000,
+        "other_alloys": 15.000
+      },
+      "diameter_mm": { "nominal": 300.00, "tol_mm": 0.20 },
+      "thickness_mm": { "nominal": 28.00, "tol_mm": 0.15 },
+      "surface_finish_ra_um": { "nominal": 1.6, "tol_um": 0.5 },
+      "heat_treatment": { "tempering_temp_c": 540.0, "time_min": 45 }
+    },
+    "brake_pad": {
+      "material_composition_pct": {
+        "steel_fiber": 28.000,
+        "kevlar_fiber": 22.000,
+        "resin_binder": 30.000,
+        "ceramic_filler": 20.000
+      },
+      "friction_coefficient_nominal": 0.38,
+      "operating_temp_range_c": { "min": -20.0, "max": 700.0 },
+      "manufacturing": {
+        "mixing_temperature_c": 120.0,
+        "mixing_time_min": 12,
+        "press_force_kn": 150.0,
+        "curing_temperature_c": 210.0,
+        "curing_time_min": 45
+      },
+      "tests": {
+        "dynamometer_cycle_test": { "cycles": 1000, "fade_criteria_drop_pct": 15.0 },
+        "wear_rate_mm_per_1000km": { "nominal": 0.35, "tol_mm": 0.05 },
+        "acceptance_rpn_threshold": 200
+      },
+      "fmea": [
+        {
+          "id": "BRK-P-001",
+          "failure_mode": "Excessive disc temperature",
+          "severity": 8,
+          "occurrence": 4,
+          "detectability": 3,
+          "rpn": 96,
+          "root_causes": ["steel_fiber_pct_too_high", "pad_porosity_low"],
+          "recommended_actions": ["reduce steel_fiber_pct by 3-5%", "introduce ceramic filler change (size distribution)", "increase dynamometer thermal fade cycles during supplier validation"]
+        }
+      ]
+    },
+    "regenerative_braking": {
+      "strategy": "Torque blending",
+      "max_regen_pct": 70.0,
+      "mode_variants": {
+        "eco": { "regen_aggressiveness_pct": 60.0 },
+        "standard": { "regen_aggressiveness_pct": 75.0 }
+      },
+      "interactions": {
+        "brake_compensation": "When hydraulic braking requested > 30 bar, reduce regen blending by 40%",
+        "sensor_links": ["regen_braking_contribution_pct", "hydraulic_brake_pressure_bar", "brake_disc_temperature_c"]
+      }
+    }
+  },
+
+  "chassis_suspension_and_steering": {
+    "control_arm": {
+      "material": { "forged_steel_pct": 100.000 },
+      "yield_strength_mpa": 550.0,
+      "dimensional_tolerance_mm": { "length": { "nominal": 320.00, "tol_mm": 0.50 } }
+    },
+    "damper": {
+      "type": "twin_tube_hydraulic",
+      "oil_viscosity_cst": 150.0,
+      "preload_setting_nm": { "nominal": 12.0, "tol_nm": 1.0 },
+      "service_interval_km": 80000
+    },
+    "bushing": {
+      "material_pct": { "natural_rubber": 85.00, "synthetic_additives": 15.00 },
+      "shore_hardness_nominal": 60,
+      "tolerance_shore": 3,
+      "supplier_variability_risk": {
+        "expected_shore_range": [57, 63],
+        "effect_on_chassis_stress_index": "higher_hardness → increased transmissibility → chassis_stress_index_up"
+      }
+    },
+    "steering": {
+      "rack_material": { "forged_steel_pct": 100.00 },
+      "electric_power_assist": {
+        "motor_copper_pct": 96.00,
+        "assist_torque_nominal_nm": 40.0
+      },
+      "tests": ["steering_torque_sweep", "lateral_force_response"]
+    },
+    "known_failures": [
+      {
+        "id": "CHS-BSH-001",
+        "failure": "High chassis stress index",
+        "root_causes": ["bushing_hardness_variation", "incorrect_press_fit"],
+        "sensor_alignments": ["chassis_stress_index", "suspension_travel_variance"],
+        "capa": ["supplier qualification tightening (±2 shore), increase incoming sample size n=30 to compute Cp/Cpk"]
+      }
+    ]
+  },
+
+  "ecu_communication_and_electrical": {
+    "12v_system": {
+      "battery_12v_voltage_nominal_v": 12.6,
+      "acceptable_range_v": { "min_v": 11.8, "max_v": 13.2 },
+      "charge_circuit": { "float_voltage_v": 13.5, "max_charge_current_a": 40.0 }
+    },
+    "ecu": {
+      "cpu_load_pct_threshold_design": 95.0,
+      "memory_usage_pct_design": 90.0,
+      "pcb_spec": { "fr4_pct": 85.0, "copper_pct": 15.0 },
+      "thermal_design": { "max_operating_temp_c": 105.0, "heatsink_contact_resistance_c_per_w": 0.25 },
+      "can_bus": { "bit_rate_kbps": 500, "error_frame_tolerance_per_min": 0 }
+    },
+    "connectors_cables": {
+      "wire_gauge_awg": [12, 14, 18],
+      "insulation_type": "cross-linked_polyethylene",
+      "shielding": "braided_copper",
+      "connector_retention_force_n": { "nominal": 30, "tol_n": 5 }
+    },
+    "known_failures": [
+      {
+        "id": "ECU-SLD-001",
+        "failure": "CAN communication dropouts",
+        "root_causes": ["cold_solder_joint", "connector_pin_corrosion"],
+        "detection_signals": ["can_bus_error_count", "sensor_signal_dropouts"],
+        "inspection": ["5% AOI x-ray check on reflow", "humidity chamber 24h for corrosion susceptibility"]
+      }
+    ]
+  },
+
+  "environmental_operating_conditions": {
+    "ambient_ranges": {
+      "hot_humid": { "temp_c_min": -10.0, "temp_c_max": 55.0, "humidity_pct_max": 95.0 },
+      "altitude_m_design": 2500.0,
+      "ingress_protection": "IP67"
+    },
+    "thermal_management": {
+      "coolant_flow_variation_tolerance_pct": 10.0,
+      "evaporator_dew_point_margin_c": 5.0
+    }
+  },
+
+  "component_aging_and_reliability": {
+    "battery_capacity_fade_pct_per_1000_cycles": 0.17,
+    "internal_resistance_growth_pct_per_year": 1.20,
+    "motor_efficiency_loss_pct_per_10000km": 0.08,
+    "thermal_cycle_count_definition": "one full pack charge from 10%->100% followed by deep discharge to 10%",
+    "high_stress_cycle_definition": "any cycle with peak cell ΔT > 40°C or peak current > 2C"
+  },
+
+  "rate_of_change_and_signatures": {
+    "battery_temp_rise_rate_c_per_min_threshold_design": 2.5,
+    "voltage_drop_rate_v_per_sec_signature": {
+      "normal_peak_v_per_sec": 0.02,
+      "anomalous_pattern": "sustained spikes > 0.05 v/sec correlated with cell imbalance"
+    },
+    "current_spike_frequency_expected_per_hr": 0.5,
+    "torque_fluctuation_rate_expected_rise_per_min": 0.02
+  },
+
+  "signal_consistency_and_sensor_mapping": {
+    "mapping_to_components": {
+      "battery": {
+        "live_sensors": ["battery_pack_voltage_v", "battery_pack_current_a", "battery_temperature_avg_c", "battery_temperature_max_c", "battery_cell_min_voltage_v", "battery_cell_max_voltage_v", "battery_temp_sensor_spread"],
+        "derived_metrics": {
+          "cell_delta_mV": "battery_cell_max_voltage_v - battery_cell_min_voltage_v",
+          "pack_power_kw": "(battery_pack_voltage_v * battery_pack_current_a) / 1000.0"
+        }
+      },
+      "motor_inverter": {
+        "live_sensors": ["motor_rpm", "motor_torque_nm", "inverter_temperature_c", "torque_fluctuation_rate"],
+        "derived_metrics": { "torque_per_rpm": "motor_torque_nm / (motor_rpm + 1e-6)" }
+      },
+      "brake_system": {
+        "live_sensors": ["brake_disc_temperature_c", "brake_pad_wear_level_pct", "hydraulic_brake_pressure_bar", "regen_braking_contribution_pct"],
+        "derived_metrics": { "brake_thermal_load": "hydraulic_brake_pressure_bar * brake_disc_temperature_c / 100.0" }
+      },
+      "chassis": {
+        "live_sensors": ["chassis_stress_index", "suspension_travel_fl_mm", "yaw_rate_deg_per_s", "steering_torque_nm"],
+        "derived_metrics": { "suspension_variance_mm": "variance(suspension_travel_fl_mm, suspension_travel_fr_mm, suspension_travel_rl_mm, suspension_travel_rr_mm)" }
+      }
+    },
+    "meta_sensor_precision": {
+      "battery_temp_sensor": { "accuracy_c": 0.5, "sample_rate_s": 1 },
+      "voltage_sensor": { "accuracy_v": 0.005, "sample_rate_s": 0.5 },
+      "current_sensor": { "accuracy_a": 0.2, "sample_rate_s": 0.5 },
+      "wheel_speed_sensor": { "accuracy_kmph": 0.2, "sample_rate_s": 0.1 }
+    }
+  },
+
+  "fmea_catalog": [
+    {
+      "id": "FMEA-BAT-THERM-001",
+      "component": "battery_pack",
+      "failure_mode": "Thermal hotspot",
+      "effects": "Local cell degradation → pack SOH decline",
+      "severity": 9,
+      "occurrence": 3,
+      "detectability": 3,
+      "rpn": 81,
+      "cause": ["adhesive overflow in coolant channel", "contaminant in coolant path"],
+      "existing_controls": ["coolant_flow_test", "visual inspection for adhesive puddling"],
+      "recommended_actions": ["add ultrasonic flow verification", "increase module thermal imaging at EOL"],
+      "expected_effect_of_action": "Reduce occurrence by 60%"
+    },
+    {
+      "id": "FMEA-BRK-TEMP-001",
+      "component": "brake_pad/disc",
+      "failure_mode": "Excessive brake disc temperature",
+      "severity": 8,
+      "occurrence": 4,
+      "detectability": 4,
+      "rpn": 128,
+      "cause": ["pad compound steel fiber % high", "improper pad curing"],
+      "existing_controls": ["dynamometer thermal fade test"],
+      "recommended_actions": ["update pad recipe, add ceramic filler variants", "increase cure oven profiling and thermocouple logging"],
+      "expected_effect_of_action": "Reduce severity of thermal events and wear by 45%"
+    }
+  ],
+
+  "spc_and_sampling_plans": {
+    "incoming_inspection_sample_sizes": {
+      "default_supplier_lot_size": 10000,
+      "aql_level_percent": 0.65,
+      "sample_size_n": 80
+    },
+    "process_control": {
+      "battery_coating_thickness": {
+        "measurement_interval_pieces": 50,
+        "control_limits_um": { "ucl": 125.0, "lcl": 115.0 },
+        "target_mean_um": 120.0,
+        "cpk_expected": 1.67
+      },
+      "laser_weld_strength_kn": {
+        "measurement_interval_pieces": 100,
+        "ucl_kn": 8.5,
+        "lcl_kn": 6.5,
+        "target_mean_kn": 7.5
+      }
+    }
+  },
+
+  "capa_templates_and_priority_rules": {
+    "capa_priority": { "critical": 1, "high": 2, "medium": 3, "low": 4 },
+    "capa_template": {
+      "capa_id": "CAPA-YYYYMMDD-XXXX",
+      "related_fmea_id": null,
+      "problem_statement": "",
+      "root_cause_analysis_summary": "",
+      "immediate_containment_actions": [],
+      "permanent_corrective_actions": [],
+      "verification_plan": "",
+      "assigned_to": "",
+      "due_date_utc": null,
+      "expected_effectiveness_metric": ""
+    },
+    "example_capa": {
+      "capa_id": "CAPA-20260131-0001",
+      "related_fmea_id": "FMEA-BRK-TEMP-001",
+      "problem_statement": "Brake discs overheating under urban high-stop cycles causing high pad wear",
+      "root_cause_analysis_summary": "Pad compound steel fiber proportion (28%) optimized for durability but causes poor thermal conduction under repeated high-heat duty cycle",
+      "immediate_containment_actions": ["Adjust regen blending to 80% under CITY mode", "Add driver advisory for heavy braking"],
+      "permanent_corrective_actions": ["Reformulate pad compound: steel_fiber -> 24%, ceramic_filler -> 24%", "Supplier qualification batch test 3x thermal fade cycles"],
+      "verification_plan": "Run 5 vehicle fleet trials over 1000 km urban cycles; monitor brake_disc_temperature_c and pad_wear; require 30% reduction in peak temp",
+      "assigned_to": "Brake_Team_LEAD",
+      "due_date_utc": "2026-04-30T00:00:00Z",
+      "expected_effectiveness_metric": "peak_temp_reduction_pct >= 30"
+    }
+  },
+
+  "supplier_variants_and_profiles": {
+    "brake_pad_suppliers": [
+      {
+        "supplier_id": "TIER1_BP_001",
+        "supplier_name": "Tier1 Brakes Pvt Ltd",
+        "material_variance_stats": {
+          "steel_fiber_pct_mean": 27.8,
+          "steel_fiber_pct_std": 0.8,
+          "ceramic_filler_pct_mean": 19.5,
+          "ceramic_filler_pct_std": 0.6
+        },
+        "quality_scores": { "on_time_delivery_pct": 98.2, "ppm_defects": 30 },
+        "control_plans": ["1% of lot dynamometer test", "incoming composition chemical assay"]
+      },
+      {
+        "supplier_id": "LOCAL_BP_042",
+        "supplier_name": "Local Components Co",
+        "material_variance_stats": {
+          "steel_fiber_pct_mean": 29.4,
+          "steel_fiber_pct_std": 1.6,
+          "ceramic_filler_pct_mean": 18.1,
+          "ceramic_filler_pct_std": 1.4
+        },
+        "quality_scores": { "on_time_delivery_pct": 92.1, "ppm_defects": 120 },
+        "control_plans": ["100% dynamometer sample on first 10 lots", "supplier corrective action audit every 6 months"]
+      }
+    ],
+    "battery_cell_suppliers": [
+      {
+        "supplier_id": "CELL_SUP_A",
+        "cell_variation": { "internal_resistance_mohm_mean": 2.10, "std_mohm": 0.12 },
+        "cycle_life_mean_cycles": 2500,
+        "warranty_agreement_years": 8
+      }
+    ]
+  },
+
+  "rca_rule_library": [
+    {
+      "rule_id": "RCA-001",
+      "name": "Brake_Temp_vs_Regen_Interaction",
+      "description": "High brake disc temperature despite regen suggests pad composition or regen-mapping mismatch",
+      "inputs": ["brake_disc_temperature_c", "regen_braking_contribution_pct", "brake_pad_wear_level_pct", "driving_mode"],
+      "reasoning_pattern": [
+        "If brake_disc_temperature_c is high AND regen_braking_contribution_pct < expected_for_mode THEN suspect pad compound or regen blending calibration",
+        "If brake_pad_wear_level_pct increases faster than expected AND regen contribution low, escalate to supplier_material_check"
+      ],
+      "outputs": ["recommend_pad_recipe_change", "recommend_regen_mode_review", "create_CAPA_reference"]
+    },
+    {
+      "rule_id": "RCA-002",
+      "name": "Battery_Temp_Spread_Hotspot",
+      "inputs": ["battery_temp_sensor_spread", "battery_temperature_max_c", "battery_temp_rise_rate_c_per_min", "coolant_flow_lpm"],
+      "reasoning_pattern": [
+        "If battery_temp_sensor_spread > expected_spread AND coolant_flow < nominal_lpm → suspect coolant channel blockage or adhesive overflow"
+      ],
+      "outputs": ["request_module_imaging", "add_coolant_flow_test", "initiate_supplier_audit"]
+    }
+  ],
+
+  "example_rulings_and_confidence": {
+    "example_1": {
+      "observations": {
+        "brake_disc_temperature_c": 138.4,
+        "regen_braking_contribution_pct": 18.5,
+        "brake_pad_wear_level_pct": 72.0
+      },
+      "matched_rules": ["RCA-001"],
+      "rca_summary": "High disc temperature with low-medium regen suggests pad compound thermal properties causing disc heat; pad wear high indicating aggressive friction behavior.",
+      "confidence_score_pct": 86.5,
+      "recommended_capa_ids": ["CAPA-20260131-0001"]
+    },
+    "example_2": {
+      "observations": {
+        "battery_temp_sensor_spread": 5.7,
+        "battery_temperature_max_c": 38.1,
+        "battery_temp_rise_rate_c_per_min": 0.42
+      },
+      "matched_rules": ["RCA-002"],
+      "rca_summary": "Moderate temp spread and moderate rise rate; likely local TIM compression variance; not yet critical but trending.",
+      "confidence_score_pct": 72.2,
+      "recommended_next_steps": ["schedule_module_imaging", "increase TIM compression checks on line"]
+    }
+  }
+}

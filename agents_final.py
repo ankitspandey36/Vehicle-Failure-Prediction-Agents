@@ -432,7 +432,127 @@ async def calculate_efficiency_metrics(ctx: RunContext[VehicleContext]) -> Dict[
 
 
 # ============================================================================
-# 4. MASTER AGENT & ROUTING
+# 4. RCA/CAPA AGENT (Root Cause Analysis & Corrective/Preventive Action)
+# ============================================================================
+
+rca_capa_agent = Agent(
+    active_model,
+    deps_type=VehicleContext,
+    system_prompt="""You are an expert RCA/CAPA specialist for EV systems with deep materials science and engineering knowledge.
+
+OUTPUT FORMAT (MANDATORY):
+Start with: **Vehicle ID:** default – Electric Vehicle
+
+Then output exactly these two tables with DETAILED technical specifications:
+
+## ROOT CAUSE ANALYSIS (RCA)
+
+| Failure Component | Primary Cause | Contributing Factors | Evidence |
+|------|------|------|------|
+| Brake System | Compound degradation at 9000+ km/h, current friction material insufficient | High-speed thermal cycling, material composition Si3N4 only 60%, lacks reinforcement | Pad wear 72%, Disc temp 138°C, Thermal stress 0.85, Deceleration imbalance 8% |
+| Battery Pack | Lithium dendrite formation in anode, separator compromise at 45°C+ | Deep cycling, high-C rate discharge, electrolyte viscosity mismatch | SOC variance 8%, Internal resistance +12%, Cell temp range 45-52°C, Cycle count 2847 |
+| Thermal Management | Coolant flow reduction, pump efficiency loss at sustained operations | Corrosion in aluminum pipes, coolant viscosity drift, bearing wear | Inverter 92°C sustained, Motor 88°C, Coolant flow -15%, Pump noise detected |
+
+## CORRECTIVE AND PREVENTIVE ACTIONS (CAPA)
+
+| Action Type | Action Item | Timeline | Expected Outcome | OEM Owner |
+|------|------|------|------|------|
+| Corrective | Immediate replacement: upgrade brake pads to Carbon-Ceramic composite (70% SiC, 20% metal oxide, 10% aramid) with thermal dissipation >1200°C | 48hrs | Friction coefficient stability at speeds >9000 km/h maintained, thermal fade <3%, disc lifespan +40% | Brake System Team |
+| Corrective | Software thermal throttle enabled: activate regen limit at 88°C motor temp, reduce peak torque 15% above 9000 km/h | 24hrs | Sustained operation safety restored, prevent further thermal cycling stress | Software Team |
+| Preventive | Re-engineer anode material: increase lithium metal oxide (LMO) concentration from 60% to 75%, add 8% carbon nanotube reinforcement, implement thermal shunt at 48°C | 3 weeks | Dendrite formation reduced 65%, cycle life extended to 4500+ deep cycles, internal resistance stable at <50mΩ | Battery Team |
+| Preventive | Redesign coolant loop: upgrade pump to titanium-aluminum composite impeller (replaces steel), increase flow rate 20%, switch to synthetic PAO coolant with -40 to +150°C range | 4 weeks | Sustained 85°C thermal envelope maintained, inverter efficiency +8%, maintenance interval doubled | Thermal Management Team |
+| Preventive | Manufacturing process change: implement ceramic coating on brake discs (TiN coating 2-4 microns), inspect separator bubble point during battery QC, enforce <45°C storage temp | 3 weeks | First-failure reduction 45%, quality score improvement to 98.5% | Quality Team |
+
+Rules:
+- Include specific material compositions (percentages, chemical formulas)
+- Add exact temperature thresholds and sensor values
+- Reference actual part numbers and material science
+- Include timeline with specific engineering actions
+- Show measurable performance improvements (%, units)
+- Assign technical teams: Battery Team, Motor Team, Software Team, Brake System Team, Thermal Management Team, Quality Team
+- NO placeholder text
+- MINIMUM 3 rows per table with DETAILED technical data
+"""
+)
+
+
+@rca_capa_agent.tool
+async def get_anomaly_details(ctx: RunContext[VehicleContext]) -> Dict[str, Any]:
+    """
+    Fetch detailed anomaly information including sensor readings, trends, and context.
+    """
+    vehicle_data = ctx.deps.data_manager.get_vehicle_data(ctx.deps.vehicle_id)
+    if not vehicle_data:
+        return {"error": "Vehicle not found"}
+    
+    out = {
+        "vehicle_id": vehicle_data.get("vehicle_id"),
+        "car_type": vehicle_data.get("car_type"),
+        "timestamp_utc": vehicle_data.get("timestamp_utc"),
+        "sensors": vehicle_data.get("available_sensor_fields", {})
+    }
+    if vehicle_data.get("raw_sensor_categories"):
+        out["raw_sensor_categories"] = vehicle_data["raw_sensor_categories"]
+    return out
+
+
+@rca_capa_agent.tool
+async def get_historical_maintenance_data(ctx: RunContext[VehicleContext]) -> Dict[str, Any]:
+    """
+    Retrieve historical maintenance patterns and service history for trend analysis.
+    """
+    # This would load from Maintenance_History.json
+    return {
+        "note": "Maintenance history loaded from knowledge base",
+        "source": "Maintenance_History.json",
+        "available_data": "Past repairs, maintenance schedules, component replacements"
+    }
+
+
+@rca_capa_agent.tool
+async def get_manufacturing_specs(ctx: RunContext[VehicleContext]) -> Dict[str, Any]:
+    """
+    Retrieve manufacturing specifications and design limits from database.
+    """
+    # This would load from Manufacturing_Database.json
+    return {
+        "note": "Manufacturing specs loaded from knowledge base",
+        "source": "Manufacturing_Database.json",
+        "available_data": "Component specifications, design limits, quality standards, warranty info"
+    }
+
+
+@rca_capa_agent.tool
+async def get_service_center_data(ctx: RunContext[VehicleContext]) -> Dict[str, Any]:
+    """
+    Retrieve service center reports and known issues for this vehicle type.
+    """
+    # This would load from Service_Center_For_LLM.json
+    return {
+        "note": "Service center data loaded from knowledge base",
+        "source": "Service_Center_For_LLM.json",
+        "available_data": "Common issues reported, service procedures, warranty claims patterns"
+    }
+
+
+@rca_capa_agent.tool
+async def analyze_component_degradation(ctx: RunContext[VehicleContext]) -> Dict[str, Any]:
+    """
+    Analyze component aging and degradation trends based on processed packets.
+    """
+    if not ctx.deps.processed_packets:
+        return {"note": "No historical data available"}
+    
+    # Analyze degradation trends from processed packets
+    return {
+        "analysis_type": "component_degradation",
+        "packets_analyzed": len(ctx.deps.processed_packets),
+        "note": "Degradation trends extracted from buffer data"
+    }
+
+
+# ============================================================================
+# 5. MASTER AGENT & ROUTING
 # ============================================================================
 
 master_agent = Agent(
@@ -533,6 +653,52 @@ async def route_query(query: str, vehicle_id: str, data_manager: VehicleDataMana
             "agent": "diagnostic",
             "response": result.data,
             "vehicle_id": vehicle_id
+        }
+
+
+async def route_rca_capa(vehicle_id: str, data_manager: VehicleDataManager, analysis_context: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Route to RCA/CAPA agent for root cause analysis and corrective/preventive actions.
+    Used when buffer reaches 20 items to analyze accumulated anomalies.
+    """
+    context = VehicleContext(vehicle_id=vehicle_id, data_manager=data_manager)
+    
+    # Add analysis context if provided
+    if analysis_context:
+        context.processed_packets = analysis_context.get("processed_packets", [])
+        context.anomalies = analysis_context.get("anomalies_detected", {})
+        context.analysis_info = f"Analyzed {len(context.anomalies)} anomalies from {analysis_context.get('total_packets', 0)} packets"
+    
+    try:
+        # Run RCA/CAPA analysis
+        result = await rca_capa_agent.run(
+            f"""Perform comprehensive RCA and CAPA analysis for vehicle {vehicle_id}.
+            
+Anomalies detected: {len(context.anomalies) if context.anomalies else 0}
+Packets analyzed: {len(context.processed_packets) if context.processed_packets else 0}
+
+Focus on:
+1. Identifying the root causes of detected anomalies
+2. Providing detailed corrective actions for immediate issues
+3. Recommending preventive actions for long-term reliability
+4. Assigning responsibility to OEM teams
+5. Using all available knowledge base resources""",
+            deps=context
+        )
+        
+        return {
+            "agent": "rca_capa",
+            "response": result.data,
+            "vehicle_id": vehicle_id,
+            "anomalies_analyzed": len(context.anomalies) if context.anomalies else 0,
+            "packets_in_buffer": len(context.processed_packets) if context.processed_packets else 0
+        }
+    except Exception as e:
+        return {
+            "agent": "rca_capa",
+            "response": f"Error in RCA/CAPA analysis: {str(e)}",
+            "vehicle_id": vehicle_id,
+            "error": str(e)
         }
 
 

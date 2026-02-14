@@ -1,0 +1,236 @@
+[
+  {
+    "service_center_id": "SC_NOIDA_01",
+    "oem_id": "MAHINDRA_AUTO",
+    "location": { "latitude": 28.5718, "longitude": 77.3291 },
+    "distance_from_vehicle_km": 0.45,
+    "estimated_travel_time_min": 3,
+    "availability": {
+      "free_slots_next_24h": 2,
+      "free_slots_next_72h": 6,
+      "earliest_available_slot_utc": "2026-01-29T11:30:00Z",
+      "avg_wait_time_min": 25
+    },
+    "service_quality": {
+      "average_rating": 4.6,
+      "total_reviews": 1240,
+      "repeat_customer_rate_pct": 68,
+      "comeback_rate_pct": 7
+    },
+    "capability_match": {
+      "ev_certified": true,
+      "battery_service_supported": true,
+      "brake_service_supported": true,
+      "software_update_supported": true,
+      "high_voltage_certified": true
+    },
+    "operational_efficiency": {
+      "avg_service_time_hr": 2.1,
+      "first_time_fix_rate_pct": 91,
+      "parts_availability_score": 0.92
+    },
+    "customer_experience": {
+      "average_review_sentiment_score": 0.84,
+      "complaint_rate_pct": 3.2
+    },
+    "historical_performance": {
+      "vehicle_model_success_rate_pct": 95,
+      "post_service_issue_rate_pct": 4.1
+    }
+  },
+  {
+    "service_center_id": "SC_NOIDA_02",
+    "oem_id": "MAHINDRA_AUTO",
+    "location": { "latitude": 28.5689, "longitude": 77.3247 },
+    "distance_from_vehicle_km": 0.38,
+    "estimated_travel_time_min": 4,
+    "availability": {
+      "free_slots_next_24h": 1,
+      "free_slots_next_72h": 4,
+      "earliest_available_slot_utc": "2026-01-29T14:00:00Z",
+      "avg_wait_time_min": 40
+    },
+    "service_quality": {
+      "average_rating": 4.3,
+      "total_reviews": 860,
+      "repeat_customer_rate_pct": 61,
+      "comeback_rate_pct": 9
+    },
+    "capability_match": {
+      "ev_certified": true,
+      "battery_service_supported": true,
+      "brake_service_supported": true,
+      "software_update_supported": false,
+      "high_voltage_certified": true
+    },
+    "operational_efficiency": {
+      "avg_service_time_hr": 2.6,
+      "first_time_fix_rate_pct": 87,
+      "parts_availability_score": 0.85
+    },
+    "customer_experience": {
+      "average_review_sentiment_score": 0.78,
+      "complaint_rate_pct": 4.8
+    },
+    "historical_performance": {
+      "vehicle_model_success_rate_pct": 92,
+      "post_service_issue_rate_pct": 5.9
+    }
+  },
+  {
+    "service_center_id": "SC_NOIDA_03",
+    "oem_id": "MAHINDRA_AUTO",
+    "location": { "latitude": 28.5734, "longitude": 77.3229 },
+    "distance_from_vehicle_km": 0.72,
+    "estimated_travel_time_min": 7,
+    "availability": {
+      "free_slots_next_24h": 4,
+      "free_slots_next_72h": 9,
+      "earliest_available_slot_utc": "2026-01-29T10:45:00Z",
+      "avg_wait_time_min": 18
+    },
+    "service_quality": {
+      "average_rating": 4.8,
+      "total_reviews": 2120,
+      "repeat_customer_rate_pct": 74,
+      "comeback_rate_pct": 5
+    },
+    "capability_match": {
+      "ev_certified": true,
+      "battery_service_supported": true,
+      "brake_service_supported": true,
+      "software_update_supported": true,
+      "high_voltage_certified": true
+    },
+    "operational_efficiency": {
+      "avg_service_time_hr": 1.9,
+      "first_time_fix_rate_pct": 94,
+      "parts_availability_score": 0.95
+    },
+    "customer_experience": {
+      "average_review_sentiment_score": 0.89,
+      "complaint_rate_pct": 2.6
+    },
+    "historical_performance": {
+      "vehicle_model_success_rate_pct": 97,
+      "post_service_issue_rate_pct": 3.4
+    }
+  },
+  {
+    "service_center_id": "SC_NOIDA_04",
+    "oem_id": "MAHINDRA_AUTO",
+    "location": { "latitude": 28.5702, "longitude": 77.3274 },
+    "distance_from_vehicle_km": 0.55,
+    "estimated_travel_time_min": 5,
+    "availability": {
+      "free_slots_next_24h": 3,
+      "free_slots_next_72h": 7,
+      "earliest_available_slot_utc": "2026-01-29T12:15:00Z",
+      "avg_wait_time_min": 22
+    },
+    "service_quality": {
+      "average_rating": 4.5,
+      "total_reviews": 1030,
+      "repeat_customer_rate_pct": 66,
+      "comeback_rate_pct": 8
+    },
+    "capability_match": {
+      "ev_certified": true,
+      "battery_service_supported": false,
+      "brake_service_supported": true,
+      "software_update_supported": true,
+      "high_voltage_certified": true
+    },
+    "operational_efficiency": {
+      "avg_service_time_hr": 2.3,
+      "first_time_fix_rate_pct": 89,
+      "parts_availability_score": 0.88
+    },
+    "customer_experience": {
+      "average_review_sentiment_score": 0.82,
+      "complaint_rate_pct": 3.9
+    },
+    "historical_performance": {
+      "vehicle_model_success_rate_pct": 93,
+      "post_service_issue_rate_pct": 5.1
+    }
+  },
+  {
+    "service_center_id": "SC_NOIDA_05",
+    "oem_id": "MAHINDRA_AUTO",
+    "location": { "latitude": 28.5675, "longitude": 77.3261 },
+    "distance_from_vehicle_km": 0.62,
+    "estimated_travel_time_min": 6,
+    "availability": {
+      "free_slots_next_24h": 0,
+      "free_slots_next_72h": 5,
+      "earliest_available_slot_utc": "2026-01-29T16:00:00Z",
+      "avg_wait_time_min": 55
+    },
+    "service_quality": {
+      "average_rating": 4.1,
+      "total_reviews": 640,
+      "repeat_customer_rate_pct": 58,
+      "comeback_rate_pct": 11
+    },
+    "capability_match": {
+      "ev_certified": false,
+      "battery_service_supported": false,
+      "brake_service_supported": true,
+      "software_update_supported": false,
+      "high_voltage_certified": false
+    },
+    "operational_efficiency": {
+      "avg_service_time_hr": 3.0,
+      "first_time_fix_rate_pct": 82,
+      "parts_availability_score": 0.74
+    },
+    "customer_experience": {
+      "average_review_sentiment_score": 0.71,
+      "complaint_rate_pct": 6.2
+    },
+    "historical_performance": {
+      "vehicle_model_success_rate_pct": 88,
+      "post_service_issue_rate_pct": 8.3
+    }
+  },
+  {
+    "service_center_id": "SC_NOIDA_06",
+    "oem_id": "MAHINDRA_AUTO",
+    "location": { "latitude": 28.5741, "longitude": 77.3312 },
+    "distance_from_vehicle_km": 0.81,
+    "estimated_travel_time_min": 8,
+    "availability": {
+      "free_slots_next_24h": 5,
+      "free_slots_next_72h": 12,
+      "earliest_available_slot_utc": "2026-01-29T09:45:00Z",
+      "avg_wait_time_min": 15
+    },
+    "service_quality": {
+      "average_rating": 4.9,
+      "total_reviews": 2980,
+      "repeat_customer_rate_pct": 79,
+      "comeback_rate_pct": 4
+    },
+    "capability_match": {
+      "ev_certified": true,
+      "battery_service_supported": true,
+      "brake_service_supported": true,
+      "software_update_supported": true,
+      "high_voltage_certified": true
+    },
+    "operational_efficiency": {
+      "avg_service_time_hr": 1.7,
+      "first_time_fix_rate_pct": 96,
+      "parts_availability_score": 0.97
+    },
+    "customer_experience": {
+      "average_review_sentiment_score": 0.92,
+      "complaint_rate_pct": 1.9
+    },
+    "historical_performance": {
+      "vehicle_model_success_rate_pct": 98,
+      "post_service_issue_rate_pct": 2.8
+    }
+  }
+]

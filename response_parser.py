@@ -169,6 +169,207 @@ def structure_analysis_for_db(llm_response: str) -> Dict[str, Any]:
     }
 
 
+def parse_rca_table(text: str) -> List[Dict[str, str]]:
+    """
+    Parse RCA markdown table from text into list of dictionaries
+    
+    Example:
+    | Failure Component | Primary Cause | Contributing Factors | Evidence |
+    |------|------|------|------|
+    | Battery | ... | ... | ... |
+    
+    Returns list of dictionaries
+    """
+    lines = text.strip().split('\n')
+    
+    # Find RCA header line
+    header_idx = -1
+    for i, line in enumerate(lines):
+        if '|' in line and 'Failure Component' in line:
+            header_idx = i
+            break
+    
+    if header_idx == -1:
+        return []
+    
+    # Extract header
+    header_line = lines[header_idx]
+    headers = [h.strip() for h in header_line.split('|')[1:-1]]
+    
+    # Skip separator line
+    data = []
+    for i in range(header_idx + 2, len(lines)):
+        line = lines[i].strip()
+        
+        if not line or '|' not in line:
+            continue
+        
+        values = [v.strip() for v in line.split('|')[1:-1]]
+        
+        if len(values) == len(headers):
+            row = {header: value for header, value in zip(headers, values)}
+            data.append(row)
+    
+    return data
+
+
+def parse_capa_table(text: str) -> List[Dict[str, str]]:
+    """
+    Parse CAPA markdown table from text into list of dictionaries
+    
+    Example:
+    | Action Type | Action Item | Timeline | Expected Outcome | OEM Owner |
+    
+    Returns list of dictionaries
+    """
+    lines = text.strip().split('\n')
+    
+    # Find CAPA header line
+    header_idx = -1
+    for i, line in enumerate(lines):
+        if '|' in line and 'Action Type' in line:
+            header_idx = i
+            break
+    
+    if header_idx == -1:
+        return []
+    
+    # Extract header
+    header_line = lines[header_idx]
+    headers = [h.strip() for h in header_line.split('|')[1:-1]]
+    
+    # Skip separator line
+    data = []
+    for i in range(header_idx + 2, len(lines)):
+        line = lines[i].strip()
+        
+        if not line or '|' not in line:
+            continue
+        
+        values = [v.strip() for v in line.split('|')[1:-1]]
+        
+        if len(values) == len(headers):
+            row = {header: value for header, value in zip(headers, values)}
+            data.append(row)
+    
+    return data
+
+
+def parse_rca_capa_response(text: str) -> Dict[str, Any]:
+    """
+    Parse complete RCA/CAPA LLM response into structured JSON
+    
+    Extracts:
+    - Vehicle ID
+    - RCA Analysis (Root Cause Analysis table)
+    - CAPA Analysis (Corrective and Preventive Actions table)
+    - OEM Owners/Teams
+    
+    Returns clean, queryable JSON structure
+    """
+    result = {
+        "vehicle_id": None,
+        "rca_analysis": [],
+        "capa_analysis": [],
+        "affected_components": None,
+        "oem_owners": [],
+        "safety_criticality": None,
+        "raw_text_preview": text[:300]  # Store first 300 chars for reference
+    }
+    
+    if not text or len(text.strip()) == 0:
+        return result
+    
+    # Extract Vehicle ID - try multiple patterns
+    vehicle_patterns = [
+        r'\*\*Vehicle ID:\*\*\s*([^\n–]+?)\s*(?:–|$)',
+        r'Vehicle ID:\s*([^\n–]+?)\s*(?:–|$)',
+        r'\*\*Vehicle ID:\*\*\s*([^\n]+)',
+        r'vehicle_id["\']?\s*:\s*["\']?([^"\'\n,]+)'
+    ]
+    
+    for pattern in vehicle_patterns:
+        vehicle_match = re.search(pattern, text, re.IGNORECASE)
+        if vehicle_match:
+            result["vehicle_id"] = vehicle_match.group(1).strip()
+            break
+    
+    # Parse RCA table
+    rca_data = parse_rca_table(text)
+    if rca_data:
+        result["rca_analysis"] = rca_data
+        # Extract unique components from RCA
+        components = set()
+        for row in rca_data:
+            component = row.get("Failure Component", "").strip()
+            if component and component not in ["", "-", "---"]:
+                components.add(component)
+        result["affected_components"] = list(components) if components else None
+    
+    # Parse CAPA table
+    capa_data = parse_capa_table(text)
+    if capa_data:
+        result["capa_analysis"] = capa_data
+        # Extract OEM owners from CAPA
+        owners = set()
+        for row in capa_data:
+            owner = row.get("OEM Owner", "").strip()
+            if owner and owner.lower() not in ["oem owner", "", "-", "---"]:
+                owners.add(owner)
+        result["oem_owners"] = list(owners)
+    
+    # Extract risk assessments - try multiple patterns
+    risk_patterns = [
+        r'Safety criticality[:\s]+([^\n,;]+)',
+        r'Criticality[:\s]+([^\n,;]+)',
+        r'Risk[:\s]+(High|Medium|Low|Critical)'
+    ]
+    
+    for pattern in risk_patterns:
+        risk_match = re.search(pattern, text, re.IGNORECASE)
+        if risk_match:
+            result["safety_criticality"] = risk_match.group(1).strip()
+            break
+    
+    return result
+
+
+def structure_rca_capa_for_db(llm_response: str) -> Dict[str, Any]:
+    """
+    Prepare RCA/CAPA analysis for database storage
+    
+    Returns clean JSON structure ready to save to MongoDB
+    Focused on parsed data, not raw text
+    """
+    parsed = parse_rca_capa_response(llm_response)
+    
+    return {
+        "vehicle_id": parsed.get("vehicle_id"),
+        "rca_analysis": parsed.get("rca_analysis"),
+        "capa_analysis": parsed.get("capa_analysis"),
+        "affected_components": parsed.get("affected_components"),
+        "oem_owners": parsed.get("oem_owners"),
+        "safety_criticality": parsed.get("safety_criticality")
+    }
+
+
+def structure_llm_response_for_db(llm_response: str, agent_type: str) -> Dict[str, Any]:
+    """
+    Prepare any LLM response for database storage in parsed format
+    
+    Args:
+        llm_response: Raw LLM response text
+        agent_type: Type of agent (diagnostic, maintenance, performance, rca_capa)
+    
+    Returns:
+        Structured JSON ready for MongoDB storage
+    """
+    if agent_type == "rca_capa":
+        return structure_rca_capa_for_db(llm_response)
+    else:
+        return structure_analysis_for_db(llm_response)
+
+
 # Example usage and testing
 if __name__ == "__main__":
     example_response = """
