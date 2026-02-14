@@ -1,15 +1,17 @@
 {
     "version": 2,
+    "buildCommand": "pip install -r requirements.txt",
+    "installCommand": "pip install -r requirements.txt",
     "builds": [
         {
-            "src": "./main.py",
-            "use": "@vercel/python"
+            "src": "main.py",
+            "use": "@vercel/python@latest"
         }
     ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "/main.py"
+            "dest": "main.py"
         }
     ]
 }
