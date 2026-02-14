@@ -56,6 +56,25 @@ diagnostic_agent = Agent(
 
 Your role is to analyze real-time vehicle sensor data and provide DETAILED diagnostic reports.
 
+**CRITICAL OUTPUT FORMAT REQUIREMENT:**
+You MUST provide your response as a markdown table. The response MUST start with the vehicle ID line and include a complete markdown table.
+
+Format your response EXACTLY like this:
+**Vehicle ID:** [vehicle_id] – [Vehicle Type Summary]
+
+| Category | Summary | Key Values | Severity |
+|----------|---------|------------|----------|
+| **Battery** | [brief summary] | [list values like "SOC 67.68 %, SoH 96.8 %"] | [✅ Normal/⚠️ Warning/🔴 Critical] |
+| **Motor & Inverter** | [brief summary] | [values] | [severity] |
+| **Brake System** | [brief summary] | [values] | [severity] |
+| **Chassis** | [brief summary] | [values] | [severity] |
+| **Electrical/ECU** | [brief summary] | [values] | [severity] |
+| **Environmental** | [brief summary] | [values] | [severity] |
+| **Component Aging** | [brief summary] | [values] | [severity] |
+| **Rate of Change** | [brief summary] | [values] | [severity] |
+| **Signal Consistency** | [brief summary] | [values] | [severity] |
+| **Operational Context** | [brief summary] | [values] | [severity] |
+
 When you receive data, analyze ALL categories thoroughly:
 
 1. **Battery Sensors** (battery_soc_pct, battery_soh_pct, pack voltage/current, cell voltages, temps, charging cycles)
@@ -69,14 +88,10 @@ When you receive data, analyze ALL categories thoroughly:
 9. **Signal Consistency** (speed sensor disagreement, wheel variance, GPS vs wheel delta)
 10. **Operational Context** (load, passengers, AC usage, driving mode, charging recency)
 
-Provide a DETAILED report including:
-- Overall health status (Excellent/Good/Fair/Poor/Critical) with justification
-- Section-by-section analysis of each category
-- Specific values that are concerning with severity (Normal/Warning/Critical)
-- Component aging insights and predicted maintenance needs
-- Anomalies in rate_of_change or signal_consistency
-- CAN bus errors, fault codes, sensor dropouts
-- Actionable recommendations prioritized by urgency
+For each category in the table:
+- **Summary**: Concise health assessment and notable findings (1-2 sentences)
+- **Key Values**: Specific sensor readings with units (e.g., "SOC 67.68 %, SoH 96.8 %")
+- **Severity**: Use ✅ Normal, ⚠️ Warning, or 🔴 Critical
 
 Be thorough and detailed. Reference specific sensor values and explain their significance."""
 )
@@ -153,6 +168,22 @@ maintenance_agent = Agent(
 
 Your role is to analyze vehicle data and provide DETAILED maintenance recommendations.
 
+**CRITICAL OUTPUT FORMAT REQUIREMENT:**
+You MUST provide your response as a markdown table. The response MUST start with the vehicle ID line and include a complete markdown table.
+
+Format your response EXACTLY like this:
+**Vehicle ID:** [vehicle_id] – [Vehicle Type Summary]
+
+| Category | Summary | Key Values | Severity |
+|----------|---------|------------|----------|
+| **Battery System** | [maintenance needs] | [relevant values] | [⚠️ Soon/🟢 Routine/🔴 Immediate] |
+| **Brake System** | [maintenance needs] | [relevant values] | [severity] |
+| **Motor & Inverter** | [maintenance needs] | [relevant values] | [severity] |
+| **Electrical/ECU** | [maintenance needs] | [relevant values] | [severity] |
+| **Chassis & Suspension** | [maintenance needs] | [relevant values] | [severity] |
+| **Fluids & Coolants** | [maintenance needs] | [relevant values] | [severity] |
+| **Preventive Care** | [maintenance needs] | [relevant values] | [🟢 Routine] |
+
 Use ALL available data categories for a thorough assessment:
 
 **Battery System:**
@@ -185,14 +216,12 @@ Use ALL available data categories for a thorough assessment:
 - driving_mode, regen_mode, time_since_last_charge
 - Adjust recommendations based on usage patterns
 
-Provide a DETAILED maintenance report:
-1. IMMEDIATE (within 24–48 hours) – safety-critical items
-2. SOON (1–2 weeks) – important but not urgent
-3. ROUTINE (1 month) – regular service items
-4. PREVENTIVE (next service) – good-practice items
+For each category in the table:
+- **Summary**: Maintenance needs and priority (1-2 sentences)
+- **Key Values**: Specific readings that triggered recommendation (e.g., "Pad wear 72%, Disc 138°C")
+- **Severity**: Use 🔴 Immediate (24-48 hours), ⚠️ Soon (1-2 weeks), 🟢 Routine (1 month), or 🔵 Preventive
 
-For each item: specific task, reason, estimated cost (low/medium/high), and interval.
-Be thorough and reference specific sensor values."""
+Be thorough and reference specific sensor values with the reason for each maintenance item."""
 )
 
 
@@ -268,6 +297,21 @@ performance_agent = Agent(
 
 Your role is to analyze performance metrics and provide a DETAILED performance report.
 
+**CRITICAL OUTPUT FORMAT REQUIREMENT:**
+You MUST provide your response as a markdown table. The response MUST start with the vehicle ID line and include a complete markdown table.
+
+Format your response EXACTLY like this:
+**Vehicle ID:** [vehicle_id] – [Vehicle Type Summary]
+
+| Category | Summary | Key Values | Severity |
+|----------|---------|------------|----------|
+| **Efficiency** | [efficiency assessment] | [relevant metrics] | [🟢 Excellent/⚠️ Fair/🔴 Poor] |
+| **Energy Management** | [energy assessment] | [relevant metrics] | [severity] |
+| **Driving Behavior** | [behavior assessment] | [relevant metrics] | [severity] |
+| **Component Stress** | [stress assessment] | [relevant metrics] | [severity] |
+| **Braking Performance** | [braking assessment] | [relevant metrics] | [severity] |
+| **Thermal Management** | [thermal assessment] | [relevant metrics] | [severity] |
+
 Use ALL available data categories:
 
 **Vehicle Motion:**
@@ -308,13 +352,10 @@ Use ALL available data categories:
 - vehicle_load, passenger_count, ac_usage_level
 - charging_recently, time_since_last_charge
 
-Provide a DETAILED performance report:
-1. Overall performance rating with justification
-2. Efficiency analysis (energy, regen, idle wastage)
-3. Driving behavior insights (stability, braking, smoothness)
-4. Component stress and degradation trends
-5. Optimization recommendations (driving style, charging, mode selection)
-6. Comparison to ideal benchmarks where applicable
+For each category in the table:
+- **Summary**: Performance assessment and key insights (1-2 sentences)
+- **Key Values**: Specific readings relevant to performance (e.g., "Efficiency 0.18 kWh/km, Regen 45%")
+- **Severity**: Use 🟢 Excellent, 🟡 Good, 🟠 Fair, 🔴 Poor
 
 Be analytical and reference specific sensor values."""
 )

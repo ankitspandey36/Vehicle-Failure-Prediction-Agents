@@ -73,12 +73,12 @@ def parse_vehicle_analysis(text: str) -> Dict[str, Any]:
         "severity_summary": {}
     }
     
-    # Extract Vehicle ID
-    vehicle_match = re.search(r'\*\*Vehicle ID:\*\*\s*([^\n–]+)', text)
+    # Extract Vehicle ID and summary
+    vehicle_match = re.search(r'\*\*Vehicle ID:\*\*\s*([^\n–]+?)\s*(?:–|$)', text)
     if vehicle_match:
         result["vehicle_id"] = vehicle_match.group(1).strip()
     
-    # Extract summary line
+    # Extract summary line (everything after the dash on Vehicle ID line)
     summary_match = re.search(r'Vehicle ID:[^–]*–\s*([^\n]+)', text)
     if summary_match:
         result["summary"] = summary_match.group(1).strip()
@@ -86,10 +86,21 @@ def parse_vehicle_analysis(text: str) -> Dict[str, Any]:
     # Parse markdown table
     table_data = parse_markdown_table(text)
     
+    if not table_data:
+        # Fallback: try to extract any useful information if table parsing fails
+        result["summary"] = result["summary"] or "Analysis completed"
+        return result
+    
     # Structure categories with their metrics
     for row in table_data:
+        category_name = row.get("Category", "").replace("**", "").strip()
+        
+        # Skip empty category names
+        if not category_name or category_name == "-----------":
+            continue
+        
         category = {
-            "name": row.get("Category", "").replace("**", "").strip(),
+            "name": category_name,
             "summary": row.get("Summary", "").strip(),
             "key_values": row.get("Key Values", "").strip(),
             "severity": row.get("Severity", "").strip(),
