@@ -3,10 +3,11 @@ FastAPI application for vehicle analysis and maintenance system
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
+from contextlib import asynccontextmanager
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 import threading
 import asyncio
 from collections import deque
@@ -42,7 +43,13 @@ app.add_middleware(
 # Initialize managers
 data_manager = VehicleDataManager(db_path=DATASET_PATH)
 logger = AnalysisLogger()
-mongodb_handler = MongoDBHandler()
+# Defer creating MongoDBHandler until startup to avoid double connections
+mongodb_handler: Optional[MongoDBHandler] = None
+
+
+def mongo_connected() -> bool:
+    """Safe check for MongoDB connection (handles None)."""
+    return bool(mongodb_handler and mongodb_handler.is_connected())
 
 # Create logs directory
 LOGS_DIR = os.path.join(SCRIPT_DIR, "logs")
@@ -125,7 +132,7 @@ async def trigger_rca_capa_analysis():
         # Create document for RCA/CAPA storage
         rca_capa_document = {
             "vehicle_id": "default",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "buffer_size": len(rolling_buffer),
             "anomalies_count": len(anomalies_detected),
             "parsed_data": parsed_rca_capa,
@@ -136,14 +143,14 @@ async def trigger_rca_capa_analysis():
         }
         
         # Save RCA/CAPA to MongoDB
-        if mongodb_handler.is_connected():
+        if mongo_connected():
             rca_id = mongodb_handler.save_rca_capa(rca_capa_document)
             
             # Also save as LLM response
             llm_response_doc = {
                 "vehicle_id": "default",
                 "agent_type": "rca_capa",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "parsed_data": parsed_rca_capa,
                 "rca_capa_id": rca_id,
                 "raw_response_preview": raw_response[:200]
@@ -231,7 +238,7 @@ def packet_stream_worker():
                     # Parse the response text into structured JSON
                     raw_response = result.get("response", "")
                     parsed_analysis = structure_analysis_for_db(raw_response)
-                    
+
                     latest_analysis = {
                         "timestamp": datetime.now().isoformat(),
                         "packet_index": idx,
@@ -239,23 +246,33 @@ def packet_stream_worker():
                         "structured_data": parsed_analysis,
                         "buffer_size": len(rolling_buffer)
                     }
-                    
-                    # Store anomaly with analysis
-                    anomaly_document = {
-                        "timestamp": packet.get("vehicle", {}).get("timestamp_utc", "N/A"),
-                        "packet_index": idx,
-                        "vehicle_id": "default",
-                        "agent": result.get("agent"),
-                        "analysis": latest_analysis,
-                        "created_at": datetime.utcnow().isoformat()
-                    }
-                    
-                    anomalies_detected[idx] = anomaly_document
 
-                    
-                    # Save to MongoDB
-                    if mongodb_handler.is_connected():
-                        mongodb_handler.save_anomaly(anomaly_document)
+                    # Only persist anomalies whose analysis severity contains 'warning'
+                    severity_map = parsed_analysis.get("severity_summary", {}) if isinstance(parsed_analysis, dict) else {}
+                    is_warning = any(
+                        isinstance(v, str) and ("warning" in v.lower() or "⚠" in v)
+                        for v in severity_map.values()
+                    )
+
+                    if is_warning:
+                        # Store anomaly with analysis
+                        anomaly_document = {
+                            "timestamp": packet.get("vehicle", {}).get("timestamp_utc", "N/A"),
+                            "packet_index": idx,
+                            "vehicle_id": "default",
+                            "agent": result.get("agent"),
+                            "analysis": latest_analysis,
+                            "created_at": datetime.now(UTC).isoformat()
+                        }
+
+                        anomalies_detected[idx] = anomaly_document
+
+                        # Save to MongoDB
+                        if mongo_connected():
+                            mongodb_handler.save_anomaly(anomaly_document)
+                    else:
+                        # Do not persist 'Normal' analyses; keep latest_analysis for visibility only
+                        pass
                     
                     # Analysis complete (no terminal output for serverless)
                     
@@ -296,13 +313,14 @@ class QueryRequest(BaseModel):
     vehicle_id: str = Field(..., description="Vehicle identifier (e.g., VH001)")
     query: str = Field(..., description="User's question about the vehicle")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "vehicle_id": "default",
                 "query": "Is my car healthy? Give me a detailed diagnostic report."
             }
         }
+    )
 
 
 class AnalysisResponse(BaseModel):
@@ -326,8 +344,8 @@ class AnomalyPostRequest(BaseModel):
     analysis: dict = Field(..., description="Analysis data from agents")
     description: Optional[str] = Field(None, description="Optional description")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "vehicle_id": "default",
                 "timestamp": "2024-01-15T10:30:45.123Z",
@@ -340,6 +358,7 @@ class AnomalyPostRequest(BaseModel):
                 "description": "Critical engine issue detected"
             }
         }
+    )
 
 
 class VehicleListResponse(BaseModel):
@@ -415,14 +434,14 @@ async def system_status(limit: int = 50):
     anomalies_list = []
     db_anomaly_count = 0
     
-    if mongodb_handler.is_connected():
+    if mongo_connected():
         anomalies_list = mongodb_handler.get_all_anomalies(limit=limit)
         db_anomaly_count = mongodb_handler.get_anomalies_count()
     
     return {
         "system": {
             "stream_active": stream_active,
-            "mongodb_connected": mongodb_handler.is_connected(),
+            "mongodb_connected": mongo_connected(),
             "timestamp": datetime.now().isoformat()
         },
         "streaming": {
@@ -435,7 +454,7 @@ async def system_status(limit: int = 50):
             "total_anomalies_detected": len(anomalies_detected),
             "total_anomalies_in_database": db_anomaly_count,
             "returned_count": len(anomalies_list),
-            "status": "All LLM data auto-saved to MongoDB" if mongodb_handler.is_connected() else "MongoDB offline - using in-memory storage"
+            "status": "All LLM data auto-saved to MongoDB" if mongo_connected() else "MongoDB offline - using in-memory storage"
         },
         "latest_analysis": latest_analysis,
         "anomalies": anomalies_list,
@@ -657,7 +676,7 @@ async def get_all_anomalies(vehicle_id: Optional[str] = None, limit: int = 100):
         List of all anomalies with their analysis
     """
     # Check if MongoDB is connected
-    if not mongodb_handler.is_connected():
+    if not mongo_connected():
         return {
             "status": "warning",
             "total_anomalies": 0,
@@ -709,7 +728,7 @@ async def save_anomaly_to_db(request: AnomalyPostRequest):
         Success status with saved anomaly ID and structured data
     """
     # Check if MongoDB is connected
-    if not mongodb_handler.is_connected():
+    if not mongo_connected():
         return {
             "status": "warning",
             "message": "MongoDB not connected. Saving to in-memory storage only.",
@@ -721,7 +740,7 @@ async def save_anomaly_to_db(request: AnomalyPostRequest):
         anomaly_document = {
             "vehicle_id": request.vehicle_id,
             "analysis": request.analysis,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(UTC).isoformat()
         }
         
         # Add optional fields if provided
@@ -779,7 +798,7 @@ async def get_anomalies():
         )
 
     # Try to get from MongoDB first
-    if mongodb_handler.is_connected():
+    if mongo_connected():
         try:
             anomalies = mongodb_handler.get_all_anomalies(limit=50)
             total_count = mongodb_handler.get_anomalies_count()
@@ -938,7 +957,7 @@ async def trigger_rca_capa():
         # Create RCA/CAPA document
         rca_capa_document = {
             "vehicle_id": "default",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "buffer_size": len(rolling_buffer),
             "anomalies_count": len(anomalies_detected),
             "manual_trigger": True,
@@ -950,14 +969,14 @@ async def trigger_rca_capa():
         
         # Save to MongoDB
         rca_id = None
-        if mongodb_handler.is_connected():
+        if mongo_connected():
             rca_id = mongodb_handler.save_rca_capa(rca_capa_document)
             
             # Also save as LLM response
             llm_response_doc = {
                 "vehicle_id": "default",
                 "agent_type": "rca_capa",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "manual_trigger": True,
                 "parsed_data": parsed_rca_capa,
                 "rca_capa_id": rca_id
@@ -994,7 +1013,7 @@ async def get_rca_capa_data(vehicle_id: Optional[str] = None, oem_owner: Optiona
     Returns:
         List of RCA/CAPA analyses with root causes and preventive actions
     """
-    if not mongodb_handler.is_connected():
+    if not mongo_connected():
         return {
             "status": "error",
             "message": "MongoDB not connected",
@@ -1042,7 +1061,7 @@ async def get_rca_capa_debug(limit: int = 10):
     
     Shows raw_response_preview to help debug parsing issues
     """
-    if not mongodb_handler.is_connected():
+    if not mongo_connected():
         return {
             "status": "error",
             "message": "MongoDB not connected"
@@ -1097,7 +1116,7 @@ async def save_llm_response_data(request: QueryRequest):
             detail="Data stream not active. Check /health for status."
         )
     
-    if not mongodb_handler.is_connected():
+    if not mongo_connected():
         raise HTTPException(
             status_code=503,
             detail="MongoDB not connected"
@@ -1127,7 +1146,7 @@ async def save_llm_response_data(request: QueryRequest):
             "vehicle_id": request.vehicle_id,
             "agent_type": agent_type,
             "query": request.query,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "buffer_size": len(rolling_buffer),
             "anomalies_count": len(anomalies_detected),
             "parsed_data": parsed_data
@@ -1165,7 +1184,7 @@ async def get_llm_responses(vehicle_id: Optional[str] = None, agent_type: Option
     Returns:
         List of parsed LLM responses in structured JSON format
     """
-    if not mongodb_handler.is_connected():
+    if not mongo_connected():
         return {
             "status": "error",
             "message": "MongoDB not connected",
@@ -1206,37 +1225,47 @@ async def get_llm_responses(vehicle_id: Optional[str] = None, agent_type: Option
 # Run the application
 # ============================================================================
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize streaming on application startup"""
-    # Clear all old data from MongoDB on startup
-    if mongodb_handler.is_connected():
+@asynccontextmanager
+async def lifespan(app):
+    """Lifespan handler: initialize resources on startup and yield control.
+
+    This replaces the deprecated @app.on_event("startup"). It ensures
+    MongoDBHandler is created exactly once and streaming is started.
+    """
+    # Create MongoDB handler now (deferred) and clear old data
+    global mongodb_handler
+    if mongodb_handler is None:
+        mongodb_handler = MongoDBHandler()
+
+    if mongo_connected():
         try:
-            # Clear anomalies
             mongodb_handler.clear_all_anomalies()
-            # Clear RCA/CAPA analyses
             mongodb_handler.clear_all_rca_capa()
-            # Clear LLM responses
             mongodb_handler.clear_all_llm_responses()
-        except Exception as e:
-            pass  # Silently handle
-    
-    # Load packets from file
+        except Exception:
+            pass
+
+    # Load packets from file and start background worker
     if load_data_stream():
-        # Start background streaming worker
         stream_thread = threading.Thread(target=packet_stream_worker, daemon=True)
         stream_thread.start()
-    else:
-        pass  # Silently fail
+
+    try:
+        yield
+    finally:
+        # Optional cleanup can be added here
+        pass
+
+# Attach lifespan handler to the FastAPI app router to avoid on_event deprecation
+app.router.lifespan_context = lifespan
 
 
 if __name__ == "__main__":
     import uvicorn
-    # Silent startup - no warnings printed
     uvicorn.run(
-        "main:app",
+        app,
         host="0.0.0.0",
         port=8000,
         reload=False,
-        log_level="critical"  # Only critical errors
+        log_level="critical"
     )

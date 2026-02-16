@@ -5,7 +5,7 @@ Simple integration - just requires MONGODB_URI in .env
 
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
-from datetime import datetime
+from datetime import datetime, UTC
 import os
 from typing import List, Dict, Optional
 
@@ -89,7 +89,7 @@ class MongoDBHandler:
         try:
             # Add timestamp if not present
             if 'timestamp' not in anomaly_data:
-                anomaly_data['timestamp'] = datetime.utcnow().isoformat()
+                anomaly_data['timestamp'] = datetime.now(UTC).isoformat()
             
             # Insert into MongoDB
             result = self.anomalies_collection.insert_one(anomaly_data)
@@ -250,7 +250,7 @@ class MongoDBHandler:
         try:
             # Add timestamp if not present
             if 'timestamp' not in rca_capa_data:
-                rca_capa_data['timestamp'] = datetime.utcnow().isoformat()
+                rca_capa_data['timestamp'] = datetime.now(UTC).isoformat()
             
             # Insert into MongoDB
             result = self.rca_capa_collection.insert_one(rca_capa_data)
@@ -315,7 +315,7 @@ class MongoDBHandler:
         try:
             # Add timestamp if not present
             if 'timestamp' not in llm_response_data:
-                llm_response_data['timestamp'] = datetime.utcnow().isoformat()
+                llm_response_data['timestamp'] = datetime.now(UTC).isoformat()
             
             # Insert into MongoDB
             result = self.llm_responses_collection.insert_one(llm_response_data)

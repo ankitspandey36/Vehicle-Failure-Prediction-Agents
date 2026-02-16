@@ -2,7 +2,7 @@ import time
 import json
 import asyncio
 from collections import deque
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import List, Dict, Any, Tuple, Optional
 
@@ -46,7 +46,7 @@ async def send_buffer_to_llm(buffer: deque, second_index: int, data_manager: Opt
         Analysis results from agents
     """
     payload = {
-        "event_time_utc": datetime.utcnow().isoformat(),
+        "event_time_utc": datetime.now(UTC).isoformat(),
         "failure_second_index": second_index,
         "buffer_size": len(buffer),
         "data": list(buffer)
@@ -96,7 +96,7 @@ Buffer data: {json.dumps(payload, indent=2)}
         
         analysis_output = {
             "status": "success",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "anomaly_detected_at": second_index,
             "buffer_size": len(buffer),
             "agent": "diagnostic",
@@ -113,7 +113,7 @@ Buffer data: {json.dumps(payload, indent=2)}
         print("[LLM] Returning raw buffer for manual analysis")
         return {
             "status": "agent_unavailable",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "anomaly_detected_at": second_index,
             "buffer_size": len(buffer),
             "raw_payload": payload
@@ -122,7 +122,7 @@ Buffer data: {json.dumps(payload, indent=2)}
         print(f"[LLM] ERROR during analysis: {e}")
         return {
             "status": "error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "anomaly_detected_at": second_index,
             "error": str(e),
             "buffer_size": len(buffer)

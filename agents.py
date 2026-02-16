@@ -368,7 +368,7 @@ def manufacturing_insights_module(
     """
 
     import json, traceback
-    from datetime import datetime
+    from datetime import datetime, UTC
 
     try:
         # ------------------------------
@@ -409,7 +409,7 @@ Tasks:
                 INSERT INTO conversations (timestamp, user_text, bot_response)
                 VALUES (%s, %s, %s)
                 """,
-                (datetime.utcnow(), user_message, json.dumps(parsed))
+                (datetime.now(UTC), user_message, json.dumps(parsed))
             )
             pg_connection.commit()
         except Exception:
@@ -419,7 +419,7 @@ Tasks:
         # 4. Final Output
         # ------------------------------
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "user_message": user_message,
             "insights": parsed
         }
@@ -508,7 +508,7 @@ Return JSON:
 
         if interpretation.get("needs_booking", False):
 
-            today = datetime.datetime.utcnow().date()
+            today = datetime.datetime.now(datetime.UTC).date()
 
             # Check next 7 days for an empty 30-minute slot
             for day_offset in range(7):
@@ -712,7 +712,7 @@ def quality_insights_agent(
     """
 
     import time, traceback, json
-    from datetime import datetime
+    from datetime import datetime, UTC
 
     try:
         # --------------------------------------------------
@@ -722,7 +722,7 @@ def quality_insights_agent(
 
         merged_insights = {
             "vehicle_id": vehicle_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "failure_probability": prediction_payload.get("failure_probability"),
             "priority_score": prediction_payload.get("priority_score"),
             "predicted_issue": prediction_payload.get("predicted_issue"),

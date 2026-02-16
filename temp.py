@@ -15,7 +15,7 @@ import time
 import json
 import asyncio
 from collections import deque
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import List, Dict, Any
 
@@ -67,7 +67,7 @@ async def send_buffer_to_llm(
 ) -> None:
     """Send buffer to AI agents for analysis when anomaly detected"""
     payload = {
-        "event_time_utc": datetime.utcnow().isoformat(),
+        "event_time_utc": datetime.now(UTC).isoformat(),
         "failure_second_index": second_index,
         "buffer_size": len(buffer),
     }
