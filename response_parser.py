@@ -161,11 +161,23 @@ def structure_analysis_for_db(llm_response: str) -> Dict[str, Any]:
     """
     parsed = convert_response_to_json(llm_response)
     
+    # Filter categories to only include those with "Warning" or ⚠️ in severity
+    filtered_categories = [
+        cat for cat in parsed.get("categories", [])
+        if "warning" in cat.get("severity", "").lower() or "⚠️" in cat.get("severity", "")
+    ]
+    
+    # Filter severity summary to match filtered categories
+    filtered_severity_summary = {
+        name: severity for name, severity in parsed.get("severity_summary", {}).items()
+        if any(cat["name"] == name for cat in filtered_categories)
+    }
+    
     return {
         "vehicle_id": parsed.get("vehicle_id"),
         "summary": parsed.get("summary"),
-        "categories": parsed.get("categories"),
-        "severity_summary": parsed.get("severity_summary")
+        "categories": filtered_categories,
+        "severity_summary": filtered_severity_summary
     }
 
 
