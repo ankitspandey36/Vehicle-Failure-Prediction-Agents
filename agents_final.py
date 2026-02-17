@@ -52,48 +52,32 @@ class VehicleContext:
 diagnostic_agent = Agent(
     active_model,
     deps_type=VehicleContext,
-    system_prompt="""You are an expert automotive diagnostic specialist AI for electric and hybrid vehicles.
+    system_prompt="""You are an expert automotive diagnostic AI specialist for electric and hybrid vehicles.
 
-Your role is to analyze real-time vehicle sensor data and provide DETAILED diagnostic reports.
+Your job is to deeply analyze ALL real-time vehicle sensor data and give a clear, intelligent diagnostic explanation to the vehicle owner.
 
-**CRITICAL OUTPUT FORMAT REQUIREMENT:**
-You MUST provide your response as a markdown table. The response MUST start with the vehicle ID line and include a complete markdown table.
+You are NOT talking to engineers.
+You are talking to a normal car owner.
 
-Format your response EXACTLY like this:
-**Vehicle ID:** [vehicle_id] – [Vehicle Type Summary]
+So your response must be:
 
-| Category | Summary | Key Values | Severity |
-|----------|---------|------------|----------|
-| **Battery** | [brief summary] | [list values like "SOC 67.68 %, SoH 96.8 %"] | [✅ Normal/⚠️ Warning/🔴 Critical] |
-| **Motor & Inverter** | [brief summary] | [values] | [severity] |
-| **Brake System** | [brief summary] | [values] | [severity] |
-| **Chassis** | [brief summary] | [values] | [severity] |
-| **Electrical/ECU** | [brief summary] | [values] | [severity] |
-| **Environmental** | [brief summary] | [values] | [severity] |
-| **Component Aging** | [brief summary] | [values] | [severity] |
-| **Rate of Change** | [brief summary] | [values] | [severity] |
-| **Signal Consistency** | [brief summary] | [values] | [severity] |
-| **Operational Context** | [brief summary] | [values] | [severity] |
+Human understandable
 
-When you receive data, analyze ALL categories thoroughly:
+Natural conversation
 
-1. **Battery Sensors** (battery_soc_pct, battery_soh_pct, pack voltage/current, cell voltages, temps, charging cycles)
-2. **Motor & Inverter** (motor RPM, torque, inverter temperature)
-3. **Brake System** (pedal position, hydraulic pressure, ABS status, wheel speeds, disc temp, pad wear %)
-4. **Chassis** (steering angle/torque, yaw/pitch/roll rates, suspension travel, stress index)
-5. **Electrical/ECU** (12V battery, ECU temp, CPU/memory load, CAN bus errors, fault codes)
-6. **Environmental** (ambient temp/humidity, pressure, rain, light)
-7. **Component Aging** (battery capacity fade, resistance growth, motor efficiency loss, thermal cycles)
-8. **Rate of Change** (temp rise rate, voltage drop, current spikes, torque fluctuation)
-9. **Signal Consistency** (speed sensor disagreement, wheel variance, GPS vs wheel delta)
-10. **Operational Context** (load, passengers, AC usage, driving mode, charging recency)
+Insightful
 
-For each category in the table:
-- **Summary**: Concise health assessment and notable findings (1-2 sentences)
-- **Key Values**: Specific sensor readings with units (e.g., "SOC 67.68 %, SoH 96.8 %")
-- **Severity**: Use ✅ Normal, ⚠️ Warning, or 🔴 Critical
+Based fully on sensor data
 
-Be thorough and detailed. Reference specific sensor values and explain their significance."""
+5–8 lines max
+
+No huge tables
+
+No raw data dump
+
+No robotic output
+
+You must analyze everything internally, but explain only what matters."""
 )
 
 
@@ -595,11 +579,10 @@ async def route_query(query: str, vehicle_id: str, data_manager: VehicleDataMana
     """
     Route user query to appropriate agent and get response.
     Uses pre-processed buffer if analysis_context is provided.
-    """
-    # First, use master agent to determine routing
-    routing_result = await master_agent.run(query)
-    agent_type = routing_result.data.strip().lower()
     
+    OPTIMIZATION: Skip master agent routing to reduce token usage.
+    Directly use diagnostic agent for /query endpoint (99% of queries are diagnostic).
+    """
     # Create context for the specialized agent
     context = VehicleContext(vehicle_id=vehicle_id, data_manager=data_manager)
     
@@ -609,42 +592,60 @@ async def route_query(query: str, vehicle_id: str, data_manager: VehicleDataMana
         context.anomalies = analysis_context.get("anomalies_detected", {})
         context.analysis_info = f"Pre-processed {analysis_context.get('total_packets', 0)} packets with {analysis_context.get('total_anomalies', 0)} anomalies detected"
     
-    # Route to appropriate agent
-    if agent_type == "diagnostic":
-        result = await diagnostic_agent.run(
-            f"Analyze the vehicle and respond to: {query}",
-            deps=context
-        )
-        return {
-            "agent": "diagnostic",
-            "response": result.data,
-            "vehicle_id": vehicle_id
-        }
+    # Direct routing based on query keywords to minimize API calls
+    query_lower = query.lower()
     
-    elif agent_type == "maintenance":
-        result = await maintenance_agent.run(
-            f"Provide maintenance guidance for: {query}",
-            deps=context
-        )
-        return {
-            "agent": "maintenance",
-            "response": result.data,
-            "vehicle_id": vehicle_id
-        }
+    # Detect query type from keywords (client-side routing, no API call needed)
+    if any(word in query_lower for word in ["maintenance", "service", "schedule", "when should", "oil", "fluid", "check", "replace"]):
+        # Use maintenance agent
+        try:
+            result = await maintenance_agent.run(
+                f"Provide maintenance guidance for: {query}",
+                deps=context
+            )
+            return {
+                "agent": "maintenance",
+                "response": result.data,
+                "vehicle_id": vehicle_id
+            }
+        except Exception as e:
+            # Fallback to diagnostic on error
+            result = await diagnostic_agent.run(
+                f"Analyze the vehicle and respond to: {query}",
+                deps=context
+            )
+            return {
+                "agent": "diagnostic",
+                "response": result.data,
+                "vehicle_id": vehicle_id
+            }
     
-    elif agent_type == "performance":
-        result = await performance_agent.run(
-            f"Analyze performance regarding: {query}",
-            deps=context
-        )
-        return {
-            "agent": "performance",
-            "response": result.data,
-            "vehicle_id": vehicle_id
-        }
+    elif any(word in query_lower for word in ["performance", "efficiency", "fuel", "range", "speed", "acceleration", "how's", "how is"]):
+        # Use performance agent
+        try:
+            result = await performance_agent.run(
+                f"Analyze performance regarding: {query}",
+                deps=context
+            )
+            return {
+                "agent": "performance",
+                "response": result.data,
+                "vehicle_id": vehicle_id
+            }
+        except Exception as e:
+            # Fallback to diagnostic on error
+            result = await diagnostic_agent.run(
+                f"Analyze the vehicle and respond to: {query}",
+                deps=context
+            )
+            return {
+                "agent": "diagnostic",
+                "response": result.data,
+                "vehicle_id": vehicle_id
+            }
     
     else:
-        # Default to diagnostic if routing unclear
+        # Default to diagnostic (health checks, errors, issues, anomalies)
         result = await diagnostic_agent.run(
             f"Analyze the vehicle and respond to: {query}",
             deps=context
